@@ -25,7 +25,7 @@ object JdcrGestureCustomRecognizer {
         if (h.size < 21) return Result.failure(Exception("关节数不够21个"))
 
         val palmSize = distance2D(h[0], h[9])
-        if (palmSize < 1e-6f) return Result.success(JdcrGestureRecognizerHelper.UNKONWN)
+        if (palmSize < 1e-6f) return Result.success(JdcrGestureRecognizer.UNKONWN)
 
         // 纯 2D 关节角度：MCP→PIP→TIP，伸直≈180°，弯曲<120°
         val isThumbExt = jointAngle(h[2], h[3], h[4]) > 150f
@@ -95,7 +95,7 @@ object JdcrGestureCustomRecognizer {
             }
         }
 
-        return Result.success(JdcrGestureRecognizerHelper.UNKONWN)
+        return Result.success(JdcrGestureRecognizer.UNKONWN)
     }
 
     private fun distance2D(a: NormalizedLandmark, b: NormalizedLandmark): Float {

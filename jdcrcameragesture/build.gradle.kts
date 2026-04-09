@@ -34,6 +34,12 @@ android {
 }
 
 dependencies {
+    val kotVersion = "1.6.0"
+//    api("androidx.core:core-ktx:$kotVersion")
+    // 2. 引入协程 (建议使用 1.6.4)
+    val coroutinesVersion = "1.6.4"
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
     val mediaPipeVersion = "0.10.14"
     api("com.google.mediapipe:tasks-vision:$mediaPipeVersion")
 }
