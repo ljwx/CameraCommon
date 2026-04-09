@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="jdcrcamerabase_custom_preview_container" type="id" />
+    <item name="jdcrcamerabase_preview_view" type="id" />
+</resources>
