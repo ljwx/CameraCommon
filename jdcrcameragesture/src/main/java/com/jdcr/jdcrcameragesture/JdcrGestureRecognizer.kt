@@ -47,13 +47,16 @@ class JdcrGestureRecognizer(val enableInnerRecognizer: Boolean = true) {
     ): Result<JdcrHandGestureResult> {
         val gesture = result.gestures()
         if (gesture.isNullOrEmpty() || gesture[0].isNullOrEmpty()) {
-            return Result.failure(JdcrGestureException(404, "没有手"))
+            val message = "没有检测到手"
+            HandGestureLog.r(message)
+            return Result.failure(JdcrGestureException(404, message))
         }
         val internalResult = internalGesture(gesture, result.landmarks())
         if (internalResult.isSuccess) {
             return internalResult
         }
         if (!enableInnerRecognizer && customRecognizer == null) {
+            HandGestureLog.r("未开启库自定义识别,且外部自定义手势识别为空,直接返回")
             return internalResult
         }
         return customGesture(result.landmarks())
@@ -83,13 +86,17 @@ class JdcrGestureRecognizer(val enableInnerRecognizer: Boolean = true) {
                     val gestureName = category.categoryName()
                     val score = category.score()
                     if (score > internalScore && gestureName in internalGestureNames) {
+                        HandGestureLog.r("模型内置手势识别成功,$gestureName,相似度:$score")
                         val mapped = getGestureResultName(gestureName)
                         if (mapped != UNKONWN) {
                             return Pair(mapped, index)
+                        } else {
+                            HandGestureLog.r("模型内置手势不在业务手势范围内")
                         }
                     }
                 }
             }
+            HandGestureLog.r("模型内置手势识别未匹配")
             return null
         }
 
@@ -100,24 +107,30 @@ class JdcrGestureRecognizer(val enableInnerRecognizer: Boolean = true) {
             return Result.success(JdcrHandGestureResult(result.first, position))
         }
 
-        return Result.failure(JdcrUnrecognizedException(301, "内置手势识别未匹配"))
+        return Result.failure(JdcrUnrecognizedException(301, "模型内置手势识别未匹配"))
     }
 
     private fun customGesture(
         landmarks: List<List<NormalizedLandmark>>,
     ): Result<JdcrHandGestureResult> {
         if (landmarks.isEmpty()) {
-            return Result.failure(JdcrUnrecognizedException(401, "未检测到关节"))
+            val message = "自定义识别未检测到关节"
+            HandGestureLog.r(message)
+            return Result.failure(JdcrUnrecognizedException(401, message))
         }
+        HandGestureLog.r("开始自定义手势识别")
         landmarks.forEachIndexed { index, oneLandmarks ->
             if (index < maxHand) {
                 val result = handleOneHand(oneLandmarks)
                 if (result.isSuccess) {
+                    HandGestureLog.r("自定义手势识别成功")
                     return result
                 }
             }
         }
-        return Result.failure(JdcrGestureException(500, "手势检测结束,没有结果"))
+        val msg = "自定义手势检测结束,没有结果"
+        HandGestureLog.r(msg)
+        return Result.failure(JdcrGestureException(500, msg))
     }
 
     private fun handleOneHand(hand: List<NormalizedLandmark>): Result<JdcrHandGestureResult> {
@@ -131,6 +144,7 @@ class JdcrGestureRecognizer(val enableInnerRecognizer: Boolean = true) {
                 hand
             )
         if (gesture?.isSuccess == true) {
+            HandGestureLog.r("自定义手势检测成功,开始检测手的位置")
             val position = handCenterNormalized(hand)
             return Result.success(JdcrHandGestureResult(gesture.getOrDefault(UNKONWN), position))
         } else {

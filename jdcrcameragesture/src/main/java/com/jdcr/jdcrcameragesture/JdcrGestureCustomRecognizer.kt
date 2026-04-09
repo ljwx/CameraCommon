@@ -22,6 +22,7 @@ object JdcrGestureCustomRecognizer {
     const val PointDown = "pointDown"
 
     fun custom(h: List<NormalizedLandmark>): Result<String> {
+        HandGestureLog.r("进入库自定义手势识别")
         if (h.size < 21) return Result.failure(Exception("关节数不够21个"))
 
         val palmSize = distance2D(h[0], h[9])
@@ -91,7 +92,7 @@ object JdcrGestureCustomRecognizer {
                 if (dx > 0) return Result.success(PointRight)
             } else if (abs(dy) > abs(dx) * 1.2f) {
                 if (dy > 0) return Result.success(PointDown)
-                if (dy < 0) return Result.success("pointUp")
+                if (dy < 0) return Result.success(JdcrGestureRecognizer.PointingUp)
             }
         }
 

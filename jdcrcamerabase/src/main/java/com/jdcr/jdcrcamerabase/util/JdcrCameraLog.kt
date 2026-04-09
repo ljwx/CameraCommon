@@ -4,7 +4,10 @@ import android.util.Log
 
 object JdcrCameraLog {
 
-    private val tag = "jdcr_camera"
+    var mTagPrefix = "jdcr"
+
+    private val feat = "_camera"
+    private val tag by lazy { mTagPrefix + feat }
 
     fun i(content: String) {
         Log.i(tag, content)

@@ -47,7 +47,7 @@ class JdcrGestureRecognizerHelper(
                     resultFlow.tryEmit(gestureResult)
                 }
                 .setErrorListener {
-                    HandGestureLog.d("识别异常:$it")
+                    HandGestureLog.e("识别异常:$it")
                 }
         gestureRecognizer = GestureRecognizer.createFromOptions(context, optionBuilder.build())
         HandGestureLog.i("创建手势识别处理器")
