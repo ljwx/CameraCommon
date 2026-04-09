@@ -1,9 +1,9 @@
 package com.jdcr.jdcrcamerabase.state
 
 sealed class JdcrCameraOperation {
-    data object Open : JdcrCameraOperation()
-    data object Switch : JdcrCameraOperation()
-    data object Close : JdcrCameraOperation()
+    object Open : JdcrCameraOperation()
+    object Switch : JdcrCameraOperation()
+    object Close : JdcrCameraOperation()
 }
 
 sealed class JdcrCameraState(val desc: String) {
