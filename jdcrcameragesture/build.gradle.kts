@@ -42,12 +42,12 @@ afterEvaluate {
     publishing {
         publications {
             create<MavenPublication>("release") {
-                from(components["release"])
+                from(components["debug"]) //release debug
                 // JitPack 会自动填充 groupId 和 version，
                 // 但为了本地测试，你可以保留这些：
                 groupId = "com.github.jdcr"
-                artifactId = "baseble"
-                version = "1.0.5-SNAPSHOT"
+                artifactId = "cameragesture"
+                version = "1.0.0-SNAPSHOT"
             }
         }
     }
