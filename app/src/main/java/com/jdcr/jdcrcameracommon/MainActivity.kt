@@ -23,6 +23,7 @@ import com.jdcr.jdcrcamerabase.JdcrCustomPreviewView
 import com.jdcr.jdcrcamerabase.config.JdcrCameraPreviewConfig
 import com.jdcr.jdcrcamerabase.config.JdcrCameraStartConfig
 import com.jdcr.jdcrcameracommon.ui.theme.JdcrCameraCommonTheme
+import com.jdcr.jdcrcameragesture.JdcrGestureRecognizerHelper
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +52,13 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 
     LaunchedEffect(Unit) {
         delay(500)
-        startCamera(previewView, context, lifecycleOwner)
+        val modelAssetPath = "mediapipe/model/gesture_recognizer.task"
+        val recognizer = JdcrGestureRecognizerHelper(context, modelAssetPath)
+        startCamera(previewView, context, lifecycleOwner).apply {
+            getImageAnalysisBitmapFlow().collect {
+                recognizer.recognizeBitmap(it)
+            }
+        }
     }
 
     Column {
@@ -71,9 +78,10 @@ private suspend fun startCamera(
     previewView: JdcrCustomPreviewView,
     context: Context,
     lifecycleOwner: androidx.lifecycle.LifecycleOwner
-) {
+):JdcrCameraHelper {
     val helper = JdcrCameraHelper(context, lifecycleOwner, previewView)
     helper.startAndWait(JdcrCameraStartConfig.Test)
+    return helper
 }
 
 @Preview(showBackground = true)

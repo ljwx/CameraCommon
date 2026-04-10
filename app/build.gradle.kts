@@ -58,5 +58,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     api(project(":jdcrcamerabase"))
+    api(project(":jdcrcameragesture"))
 
 }

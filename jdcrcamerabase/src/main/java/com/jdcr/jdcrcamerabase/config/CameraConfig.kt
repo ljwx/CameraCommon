@@ -23,7 +23,7 @@ data class JdcrCameraStartConfig(
 ) {
     companion object {
         val Test = JdcrCameraStartConfig(
-            lensFacingBack = true,
+            lensFacingBack = false,
             captureConfig = CameraCaptureConfig(true),
             analysisConfig = CameraAnalysisConfig(true)
         )
