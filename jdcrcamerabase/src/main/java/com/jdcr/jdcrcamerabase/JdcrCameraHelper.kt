@@ -21,7 +21,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import com.jdcr.jdcrcamerabase.config.CameraStartConfig
+import com.jdcr.jdcrcamerabase.config.JdcrCameraStartConfig
 import com.jdcr.jdcrcamerabase.exception.JdcrCameraException
 import com.jdcr.jdcrcamerabase.state.JdcrCameraOperation
 import com.jdcr.jdcrcamerabase.state.JdcrCameraState
@@ -48,10 +48,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.Executors
-import kotlin.coroutines.resumeWithException
 
 class JdcrCameraHelper(
     private val context: Context,
@@ -69,7 +67,7 @@ class JdcrCameraHelper(
     private val cameraMutex = Mutex()
 
     private var cameraProvider: ProcessCameraProvider? = null
-    private var config = CameraStartConfig.Capture
+    private var config = JdcrCameraStartConfig.Capture
     private var camera: Camera? = null
     private var preview: Preview? = null
     private var capture: ImageCapture? = null
@@ -220,7 +218,7 @@ class JdcrCameraHelper(
         return imageAnalysis!!
     }
 
-    private fun setupUseCases(config: CameraStartConfig): List<UseCase> {
+    private fun setupUseCases(config: JdcrCameraStartConfig): List<UseCase> {
         return mutableListOf<UseCase>().apply {
             config.apply {
                 currentLensFacingBack = lensFacingBack
@@ -330,7 +328,7 @@ class JdcrCameraHelper(
         return isOpened()
     }
 
-    private fun checkStarted(config: CameraStartConfig): Boolean {
+    private fun checkStarted(config: JdcrCameraStartConfig): Boolean {
         if (isOpenedInternal() && config == this.config) {
             JdcrCameraLog.d("相机已启动,且配置相同,不执行启动操作")
             return true
@@ -338,7 +336,7 @@ class JdcrCameraHelper(
         return false
     }
 
-    fun start(config: CameraStartConfig = CameraStartConfig.Capture): Result<Boolean> {
+    fun start(config: JdcrCameraStartConfig = JdcrCameraStartConfig.Capture): Result<Boolean> {
         if (checkStarted(config)) return Result.success(true)
         if (cameraProvider == null) {
             val message = "相机未初始化完成"
@@ -355,7 +353,7 @@ class JdcrCameraHelper(
         }
     }
 
-    suspend fun startAndWait(config: CameraStartConfig = CameraStartConfig.Capture): Result<Boolean> {
+    suspend fun startAndWait(config: JdcrCameraStartConfig = JdcrCameraStartConfig.Capture): Result<Boolean> {
         if (checkStarted(config)) return Result.success(true)
         if (cameraProvider == null) {
             withTimeoutOrNull(3000) {

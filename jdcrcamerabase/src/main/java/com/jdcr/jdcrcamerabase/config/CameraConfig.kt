@@ -15,22 +15,27 @@ data class CameraAnalysisConfig(
 
 data class CameraCaptureConfig(val enable: Boolean = true)
 
-data class CameraStartConfig(
+data class JdcrCameraStartConfig(
     val lensFacingBack: Boolean = true,
     val previewConfig: CameraPreviewConfig = CameraPreviewConfig(),
     val captureConfig: CameraCaptureConfig = CameraCaptureConfig(),
     val analysisConfig: CameraAnalysisConfig = CameraAnalysisConfig(),
 ) {
     companion object {
-        val Capture = CameraStartConfig()
+        val Test = JdcrCameraStartConfig(
+            lensFacingBack = true,
+            captureConfig = CameraCaptureConfig(true),
+            analysisConfig = CameraAnalysisConfig(true)
+        )
+        val Capture = JdcrCameraStartConfig()
         val Analysis =
-            CameraStartConfig(
+            JdcrCameraStartConfig(
                 lensFacingBack = false,
                 captureConfig = CameraCaptureConfig(false),
                 analysisConfig = CameraAnalysisConfig(true)
             )
         val AnalysisNoPreview =
-            CameraStartConfig(
+            JdcrCameraStartConfig(
                 lensFacingBack = false,
                 captureConfig = CameraCaptureConfig(false),
                 analysisConfig = CameraAnalysisConfig(true),

@@ -1,21 +1,31 @@
 package com.jdcr.jdcrcamerabase.config
 
-import android.content.Context
-import android.graphics.RectF
+import android.graphics.Color
+
+data class JdcrPreviewOuterBorder(val color: Int = Color.WHITE, val width: Float = 3f)
+
+data class JdcrPreviewUpperMaskInnerStroke(
+    val strokeColor: Int = Color.WHITE, //内圈边框颜色
+    val strokeWidth: Float = 2f, //内圈边框宽度
+)
+
+data class JdcrPreviewUpperMask(
+    val maskAlpha: Float = 0.5f,
+    val marginHorizontal: Float = 30f,// 遮罩左右间距
+    val marginVertical: Float = 30f,// 遮罩上下间距
+    val innerRadius: Float = 12f,//遮罩弧度
+    val innerStroke: JdcrPreviewUpperMaskInnerStroke? = JdcrPreviewUpperMaskInnerStroke()
+)
 
 data class JdcrCameraPreviewConfig(
-    val w: Float?,
-    val h: Float?,
-    val x: Float?,
-    val y: Float?,
-    val outerRadiusTop: Float?,// 顶部弧度
-    val outerRadiusBottom: Float?,// 边框弧度(上菜)
-    val showOuterBorder: Boolean?,
-    val showMask: Boolean?,// 是否显示遮罩
-    val maskAlpha: Float?,
-    val maskMarginHorizontal: Float?,// 遮罩左右间距
-    val maskMarginVertical: Float?,// 遮罩上下间距
-    val maskRadius: Float?,//遮罩弧度
+    val w: Float,
+    val h: Float,
+    val x: Float,
+    val y: Float,
+    val outerRadiusTop: Float = 12f,// 顶部弧度
+    val outerRadiusBottom: Float = 12f,// 底部弧度
+    val outerBorder: JdcrPreviewOuterBorder? = null,//外边框
+    val upperMask: JdcrPreviewUpperMask? = null,// 是否显示遮罩
 ) {
 
     companion object {
@@ -25,39 +35,11 @@ data class JdcrCameraPreviewConfig(
                 264f,
                 208f,
                 18f,
-                20f,
-                20f,
-                false,
-                false,
-                0.2f,
-                30f,
-                30f,
-                8f
+                outerBorder = JdcrPreviewOuterBorder(),
+                upperMask = JdcrPreviewUpperMask()
             )
         }
 
-    }
-
-    fun getOverlayRectF(context: Context): RectF {
-        val diff = 2
-        val left = dp2px(context, (maskMarginHorizontal ?: 0f) + diff).toFloat()
-        val top = dp2px(context, (maskMarginVertical ?: 0f) + diff).toFloat()
-        val right = dp2px(context, (w ?: 0f) - (maskMarginHorizontal ?: 0f) - diff).toFloat()
-        val bottom = dp2px(context, (h ?: 0f) - (maskMarginVertical ?: 0f) - diff).toFloat()
-        return RectF(left, top, right, bottom)
-    }
-
-    fun getOverlayRectFStroke(context: Context): RectF {
-        val left = dp2px(context, (maskMarginHorizontal ?: 0f)).toFloat()
-        val top = dp2px(context, (maskMarginVertical ?: 0f)).toFloat()
-        val right = dp2px(context, (w ?: 0f) - (maskMarginHorizontal ?: 0f)).toFloat()
-        val bottom = dp2px(context, (h ?: 0f) - (maskMarginVertical ?: 0f)).toFloat()
-        return RectF(left, top, right, bottom)
-    }
-
-    fun dp2px(context: Context, dp: Float): Int {
-        val density = context.resources.displayMetrics.density
-        return (dp * density).toInt()
     }
 
 }

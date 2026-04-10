@@ -10,9 +10,7 @@ import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizer
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 
 class JdcrGestureRecognizerHelper(
     private val context: Context,
@@ -21,7 +19,6 @@ class JdcrGestureRecognizerHelper(
 ) {
 
     private var gestureRecognizer: GestureRecognizer? = null
-    private val stateFlow = MutableStateFlow(Result.success(false))
     private val resultFlow = MutableSharedFlow<Result<JdcrHandGestureResult>>(
         replay = 0,
         extraBufferCapacity = 1,
@@ -76,10 +73,6 @@ class JdcrGestureRecognizerHelper(
 
     fun getResultFlow(): SharedFlow<Result<JdcrHandGestureResult>> {
         return resultFlow
-    }
-
-    fun getStateFlow(): StateFlow<Result<Boolean>> {
-        return stateFlow
     }
 
 }

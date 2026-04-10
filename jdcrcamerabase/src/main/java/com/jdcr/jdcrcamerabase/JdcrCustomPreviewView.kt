@@ -9,11 +9,15 @@ import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.util.TypedValue
 import android.widget.FrameLayout
 import androidx.camera.view.PreviewView
 import kotlin.math.max
 import androidx.core.graphics.toColorInt
 import com.jdcr.jdcrcamerabase.config.JdcrCameraPreviewConfig
+import com.jdcr.jdcrcamerabase.config.JdcrPreviewOuterBorder
+import com.jdcr.jdcrcamerabase.config.JdcrPreviewUpperMask
+import com.jdcr.jdcrcamerabase.config.JdcrPreviewUpperMaskInnerStroke
 import com.jdcr.jdcrcamerabase.util.JdcrCameraLog
 
 private fun Float?.dp2Px(defaultPx: Int, context: Context): Int {
@@ -24,6 +28,14 @@ private fun Float?.dp2Px(defaultPx: Int, context: Context): Int {
         return ((this * it) + 0.5).toInt()
     }
     return defaultPx
+}
+
+private fun Float.dp2Px(context: Context): Float {
+    return TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        this,
+        context.resources.displayMetrics
+    )
 }
 
 class JdcrCustomPreviewView(
@@ -41,12 +53,12 @@ class JdcrCustomPreviewView(
             val save = canvas.save()
             drawClip(canvas)
             super.dispatchDraw(canvas)
-            if (option.showOuterBorder == true) {
+            if (option.outerBorder != null) {
                 canvas.restoreToCount(save)
-                drawWhiteBorder(canvas)
+                drawOuterBorder(canvas, option.outerBorder)
             }
-            if (option.showMask == true) {
-                drawMaskAndBorder(canvas)
+            if (option.upperMask != null) {
+                drawUpperMask(canvas, option.upperMask)
             }
         } catch (e: Exception) {
             JdcrCameraLog.d("绘制圆角失败：${e.message}")
@@ -69,14 +81,14 @@ class JdcrCustomPreviewView(
         canvas.clipPath(path)
     }
 
-    private fun drawWhiteBorder(canvas: Canvas) {
+    private fun drawOuterBorder(canvas: Canvas, outerBorder: JdcrPreviewOuterBorder) {
         if (width <= 0 || height <= 0) return
-        val strokePx = 4f.dp2Px(4, context).toFloat()
+        val strokePx = outerBorder.width.dp2Px(context)
         if (width < strokePx || height < strokePx) return
         val half = strokePx / 2f
         val rect = RectF(half, half, width - half, height - half)
-        val radiusTopPx = option.outerRadiusTop.dp2Px(48, context).toFloat()
-        val radiusBottomPx = option.outerRadiusBottom.dp2Px(48, context).toFloat()
+        val radiusTopPx = option.outerRadiusTop.dp2Px(context)
+        val radiusBottomPx = option.outerRadiusBottom.dp2Px(context)
         val radiusTopInner = max(0f, radiusTopPx - half)
         val radiusBottomInner = max(0f, radiusBottomPx - half)
         val radii = floatArrayOf(
@@ -89,31 +101,39 @@ class JdcrCustomPreviewView(
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = strokePx
-            color = Color.WHITE
+            color = outerBorder.color
         }
         canvas.drawPath(path, paint)
     }
 
-    private fun drawMaskAndBorder(canvas: Canvas) {
+    private fun drawUpperMask(canvas: Canvas, params: JdcrPreviewUpperMask) {
         try {
-            // 获取虚线边框的位置和尺寸
-            val borderRect = option.getOverlayRectF(context)
-            val strokeRect = option.getOverlayRectFStroke(context)
 
-            val layerId = canvas.saveLayer(
+            fun getOverlayRectF(context: Context, diff: Int = 0): RectF {
+                val left = (params.marginHorizontal + diff).dp2Px(context)
+                val top = (params.marginVertical + diff).dp2Px(context)
+                val right = (option.w - params.marginHorizontal - diff).dp2Px(context)
+                val bottom = (option.h - params.marginVertical - diff).dp2Px(context)
+                return RectF(left, top, right, bottom)
+            }
+
+            // 获取虚线边框的位置和尺寸
+            val borderRect = getOverlayRectF(context, 1)
+            val strokeRect = getOverlayRectF(context)
+
+            val fullScreenRect = RectF(
                 0f,
                 0f,
                 width.toFloat(),
-                height.toFloat(),
-                null,
-                Canvas.ALL_SAVE_FLAG
+                height.toFloat()
             )
+            val layerId = canvas.saveLayer(fullScreenRect, null)
 
             // 1. 先绘制整个区域的半透明遮罩
             val maskPaint = Paint().apply {
                 color = "#00000000".toColorInt()
                 style = android.graphics.Paint.Style.FILL
-                alpha = (256 * (option.maskAlpha ?: 0.5f)).toInt()
+                alpha = (256 * (params.maskAlpha)).toInt()
             }
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), maskPaint)
 
@@ -121,7 +141,7 @@ class JdcrCustomPreviewView(
             val clearPaint = Paint().apply {
                 xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
             }
-            val radiusMaskPx = option.maskRadius.dp2Px(36, context).toFloat()
+            val radiusMaskPx = params.innerRadius.dp2Px(context)
             if (radiusMaskPx > 0) {
                 canvas.drawRoundRect(borderRect, radiusMaskPx, radiusMaskPx, clearPaint)
             } else {
@@ -130,21 +150,26 @@ class JdcrCustomPreviewView(
             canvas.restoreToCount(layerId)
 
             // 3. 最后绘制虚线边框
-            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 4f // 4px宽度
-                color = Color.WHITE // 白色虚线
-                pathEffect = DashPathEffect(floatArrayOf(20f, 10f), 0f) // 虚线模式
-            }
+            val borderPaint = getUpperInnerBorderPaint(params.innerStroke)
 
             if (radiusMaskPx > 0) {
                 canvas.drawRoundRect(strokeRect, radiusMaskPx, radiusMaskPx, borderPaint)
             } else {
                 canvas.drawRect(strokeRect, borderPaint)
             }
-            JdcrCameraLog.d("绘制遮罩和虚线边框完成")
+            JdcrCameraLog.d("绘制遮罩完成")
         } catch (e: Exception) {
-            JdcrCameraLog.d("绘制遮罩和虚线边框失败：${e.message}")
+            JdcrCameraLog.d("绘制遮罩失败：${e.message}")
+        }
+    }
+
+    private fun getUpperInnerBorderPaint(stroke: JdcrPreviewUpperMaskInnerStroke?):Paint {
+        stroke?:return Paint().apply { color = Color.TRANSPARENT }
+        return Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = stroke.strokeWidth.dp2Px(context)
+            color = stroke.strokeColor
+            pathEffect = DashPathEffect(floatArrayOf(20f, 10f), 0f) // 虚线模式
         }
     }
 
