@@ -41,5 +41,10 @@ data class JdcrCameraStartConfig(
                 analysisConfig = CameraAnalysisConfig(true),
                 previewConfig = CameraPreviewConfig(false)
             )
+        val QRCode = JdcrCameraStartConfig(
+            lensFacingBack = true,
+            captureConfig = CameraCaptureConfig(false),
+            analysisConfig = CameraAnalysisConfig(true)
+        )
     }
 }

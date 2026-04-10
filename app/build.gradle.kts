@@ -59,5 +59,6 @@ dependencies {
 
     api(project(":jdcrcamerabase"))
     api(project(":jdcrcameragesture"))
+    api(project(":jdcrqrcode"))
 
 }

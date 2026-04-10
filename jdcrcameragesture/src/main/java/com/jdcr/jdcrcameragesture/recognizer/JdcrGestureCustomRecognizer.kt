@@ -1,6 +1,7 @@
-package com.jdcr.jdcrcameragesture
+package com.jdcr.jdcrcameragesture.recognizer
 
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+import com.jdcr.jdcrcameragesture.util.HandGestureLog
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.sqrt
@@ -47,7 +48,7 @@ object JdcrGestureCustomRecognizer {
         // 判断666的横竖方向
         val dx6 = h[4].x() - h[20].x()
         val dy6 = h[4].y() - h[20].y()
-        val isHorizontal6 = kotlin.math.abs(dx6) > kotlin.math.abs(dy6) * 1.1f
+        val isHorizontal6 = abs(dx6) > abs(dy6) * 1.1f
 
         // 3. 其他辅助判定（用于比心、指向等）
         val middleCurled = middleAngle < 140f

@@ -2,6 +2,7 @@ package com.jdcr.jdcrcameracommon
 
 import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +25,7 @@ import com.jdcr.jdcrcamerabase.config.JdcrCameraPreviewConfig
 import com.jdcr.jdcrcamerabase.config.JdcrCameraStartConfig
 import com.jdcr.jdcrcameracommon.ui.theme.JdcrCameraCommonTheme
 import com.jdcr.jdcrcameragesture.JdcrGestureRecognizerHelper
+import com.jdcr.jdcrqrcode.JdcrQRCodeHelper
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +53,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     val previewView = remember { JdcrCustomPreviewView(context, JdcrCameraPreviewConfig.getTest()) }
 
     LaunchedEffect(Unit) {
+        return@LaunchedEffect
         delay(500)
         val modelAssetPath = "mediapipe/model/gesture_recognizer.task"
         val recognizer = JdcrGestureRecognizerHelper(context, modelAssetPath)
@@ -59,6 +62,11 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
                 recognizer.recognizeBitmap(it)
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(500)
+        startQRCode(previewView, context, lifecycleOwner)
     }
 
     Column {
@@ -78,10 +86,25 @@ private suspend fun startCamera(
     previewView: JdcrCustomPreviewView,
     context: Context,
     lifecycleOwner: androidx.lifecycle.LifecycleOwner
-):JdcrCameraHelper {
+): JdcrCameraHelper {
     val helper = JdcrCameraHelper(context, lifecycleOwner, previewView)
     helper.startAndWait(JdcrCameraStartConfig.Test)
     return helper
+}
+
+private suspend fun startQRCode(
+    previewView: JdcrCustomPreviewView,
+    context: Context,
+    lifecycleOwner: androidx.lifecycle.LifecycleOwner
+) {
+    val helper = JdcrCameraHelper(context, lifecycleOwner, previewView)
+    helper.startAndWait(JdcrCameraStartConfig.QRCode)
+    val scanner = JdcrQRCodeHelper()
+    helper.getImageAnalysisBitmapFlow().collect {
+        scanner.scan(it).onSuccess {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
+    }
 }
 
 @Preview(showBackground = true)

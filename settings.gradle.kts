@@ -23,3 +23,4 @@ rootProject.name = "JdcrCameraCommon"
 include(":app")
 include(":jdcrcamerabase")
 include(":jdcrcameragesture")
+include(":jdcrqrcode")
