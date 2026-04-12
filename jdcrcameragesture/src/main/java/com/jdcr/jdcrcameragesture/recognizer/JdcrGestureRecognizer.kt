@@ -6,7 +6,7 @@ import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizerResu
 import com.jdcr.jdcrcameragesture.JdcrGestureRecognizerHelper
 import com.jdcr.jdcrcameragesture.data.GestureName
 import com.jdcr.jdcrcameragesture.data.JdcrGestureName
-import com.jdcr.jdcrcameragesture.util.HandGestureLog
+import com.jdcr.jdcrcameragesture.util.JdcrGestureLog
 import com.jdcr.jdcrcameragesture.exception.JdcrGestureException
 import com.jdcr.jdcrcameragesture.data.GesturePosition
 import com.jdcr.jdcrcameragesture.data.JdcrHandGestureResult
@@ -27,7 +27,7 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
         val gesture = result.gestures()
         if (gesture.isNullOrEmpty() || gesture[0].isNullOrEmpty()) {
             val message = "没有检测到手"
-            HandGestureLog.r(message)
+            JdcrGestureLog.v(message)
             return Result.failure(JdcrNoneHandException(404, message))
         }
         val internalResult = internalGesture(gesture, result.landmarks())
@@ -35,7 +35,7 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
             return internalResult
         }
         if (customRecognizer == null) {
-            HandGestureLog.r("自定义手势识别为空,直接返回")
+            JdcrGestureLog.v("自定义手势识别为空,直接返回")
             return internalResult
         }
         return customGesture(result.landmarks())
@@ -48,11 +48,11 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
 
         fun judgeGesture(score: Float, name: String): Result<GestureName> {
             if (score >= modelScore) {
-                HandGestureLog.r("模型内置手势识别成功,$name,相似度:$score")
+                JdcrGestureLog.v("模型内置手势识别成功,$name,相似度:$score")
                 if (name in options.allowGestures) {
                     return Result.success(GestureName(name))
                 } else {
-                    HandGestureLog.r("模型内置手势不在目标手势范围内")
+                    JdcrGestureLog.v("模型内置手势不在目标手势范围内")
                 }
             }
             return Result.failure(JdcrUnrecognizedException(0, ""))
@@ -75,7 +75,7 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
             val defaultHand = 0
             val name = GestureName(JdcrGestureName.UNKNOWN)
             val position = handCenterNormalized(landmarks[defaultHand])
-            HandGestureLog.r("内置手势全部未匹配,且没有自定义识别器,返回第一只手识别结果")
+            JdcrGestureLog.v("内置手势全部未匹配,且没有自定义识别器,返回第一只手识别结果")
             return Result.success(JdcrHandGestureResult(name, position))
         }
 
@@ -88,10 +88,10 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
     ): Result<JdcrHandGestureResult> {
         if (landmarks.isEmpty()) {
             val message = "自定义识别器未检测到关节"
-            HandGestureLog.r(message)
+            JdcrGestureLog.v(message)
             return Result.failure(JdcrUnrecognizedException(401, message))
         }
-        HandGestureLog.r("开始自定义手势识别")
+        JdcrGestureLog.v("开始自定义手势识别")
         var firstHandResult: JdcrHandGestureResult? = null
         landmarks.forEachIndexed { index, oneLandmarks ->
             if (index < maxHand) {
@@ -107,11 +107,11 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
             }
         }
         if (firstHandResult != null) {
-            HandGestureLog.r("自定义手势识别没有检测到手势,返回第一只手的信息")
+            JdcrGestureLog.v("自定义手势识别没有检测到手势,返回第一只手的信息")
             return Result.success(firstHandResult!!)
         }
         val msg = "自定义手势检测结束,没有结果"
-        HandGestureLog.r(msg)
+        JdcrGestureLog.v(msg)
         return Result.failure(JdcrGestureException(500, msg))
     }
 
@@ -119,7 +119,7 @@ internal class JdcrGestureRecognizer(private val options: JdcrGestureRecognizerH
         val gesture = customRecognizer?.recognize(hand)
         if (gesture?.isSuccess == true) {
             val name = gesture.getOrDefault(GestureName(JdcrGestureName.UNKNOWN))
-            HandGestureLog.r("自定义手势检测成功,开始检测手的位置")
+            JdcrGestureLog.v("自定义手势检测成功,开始检测手的位置")
             val position = handCenterNormalized(hand)
             return Result.success(JdcrHandGestureResult(name, position))
         } else {

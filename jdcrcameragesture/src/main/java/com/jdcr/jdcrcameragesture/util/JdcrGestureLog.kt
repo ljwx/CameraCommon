@@ -1,11 +1,11 @@
-package com.jdcr.jdcrqrcode
+package com.jdcr.jdcrcameragesture.util
 
 import com.jdcr.jdcrlog.JdcrLogBase
 
-object JdcrQRCodeLog {
+object JdcrGestureLog {
 
     var prefix = "jdcr_"
-    var feature = "qrcode"
+    var feature = "camera_gesture"
 
     private val logger by lazy { JdcrLogBase(prefix, feature) }
 

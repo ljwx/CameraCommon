@@ -12,7 +12,7 @@ import com.jdcr.jdcrcameragesture.data.JdcrHandGestureResult
 import com.jdcr.jdcrcameragesture.recognizer.CustomRecognizer
 import com.jdcr.jdcrcameragesture.recognizer.JdcrGestureCustomRecognizer
 import com.jdcr.jdcrcameragesture.recognizer.JdcrGestureRecognizer
-import com.jdcr.jdcrcameragesture.util.HandGestureLog
+import com.jdcr.jdcrcameragesture.util.JdcrGestureLog
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,15 +40,15 @@ class JdcrGestureRecognizerHelper(
                 .setResultListener { mpResult, _ ->
                     val gestureResult = recognizer.processRecognitionResult(mpResult)
                     if (gestureResult.isSuccess) {
-                        HandGestureLog.i("异步识别结果:" + gestureResult.getOrNull())
+                        JdcrGestureLog.i("异步识别结果:" + gestureResult.getOrNull())
                     }
                     resultFlow.tryEmit(gestureResult)
                 }
                 .setNumHands(options.maxHand)
                 .setErrorListener {
-                    HandGestureLog.e("异步识别异常:$it")
+                    JdcrGestureLog.e("异步识别异常:$it")
                 }
-        HandGestureLog.i("创建手势识别处理器")
+        JdcrGestureLog.i("创建手势识别处理器")
         return GestureRecognizer.createFromOptions(context, optionBuilder.build())
     }
 

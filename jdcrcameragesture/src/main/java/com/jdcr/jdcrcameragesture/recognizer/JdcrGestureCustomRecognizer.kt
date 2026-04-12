@@ -4,7 +4,7 @@ import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.jdcr.jdcrcameragesture.data.JdcrGestureName
 import com.jdcr.jdcrcameragesture.data.GestureName
 import com.jdcr.jdcrcameragesture.exception.JdcrUnrecognizedException
-import com.jdcr.jdcrcameragesture.util.HandGestureLog
+import com.jdcr.jdcrcameragesture.util.JdcrGestureLog
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.sqrt
@@ -18,7 +18,7 @@ import kotlin.math.sqrt
 internal class JdcrGestureCustomRecognizer : CustomRecognizer {
 
     override fun recognize(h: List<NormalizedLandmark>): Result<GestureName> {
-        HandGestureLog.r("进入库自定义手势识别")
+        JdcrGestureLog.v("进入库自定义手势识别")
         if (h.size < 21) return Result.failure(JdcrUnrecognizedException(506, "关节数不够21个"))
 
         val palmSize = distance2D(h[0], h[9])

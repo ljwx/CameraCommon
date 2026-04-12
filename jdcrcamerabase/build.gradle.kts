@@ -53,6 +53,8 @@ dependencies {
     //扩展库,如果之后想用厂商提供的 HDR、夜景、美颜等功能
 //    implementation("androidx.camera:camera-extensions:$camerax_version")
 
+    api("com.github.ljwx:jdcrlog:1.0.4-SNAPSHOT")
+
 }
 
 afterEvaluate {

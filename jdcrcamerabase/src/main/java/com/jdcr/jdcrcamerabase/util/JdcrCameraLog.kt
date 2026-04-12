@@ -1,27 +1,32 @@
 package com.jdcr.jdcrcamerabase.util
 
-import android.util.Log
+import com.jdcr.jdcrlog.JdcrLogBase
 
-open class JdcrCameraLogBase(feat: String) {
+object JdcrCameraLog {
 
-    protected val tag by lazy { JdcrCameraLog.mTagPrefix + feat }
+    var prefix = "jdcr_"
+    var feature = "camera"
 
-    fun i(content: String) {
-        Log.i(tag, content)
+    private val logger by lazy { JdcrLogBase(prefix, feature) }
+
+    fun v(msg: String) {
+        logger.v(msg)
     }
 
-    fun d(content: String) {
-        Log.d(tag, content)
+    fun d(msg: String) {
+        logger.d(msg)
     }
 
-    fun e(content: String) {
-        Log.e(tag, content)
+    fun i(msg: String) {
+        logger.i(msg)
     }
 
-}
+    fun w(msg: String) {
+        logger.w(msg)
+    }
 
-object JdcrCameraLog : JdcrCameraLogBase("_camera") {
-
-    var mTagPrefix = "jdcr"
+    fun e(msg: String, t: Throwable? = null) {
+        logger.i(msg, t)
+    }
 
 }

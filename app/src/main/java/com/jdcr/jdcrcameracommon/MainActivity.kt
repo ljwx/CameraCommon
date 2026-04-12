@@ -23,8 +23,10 @@ import com.jdcr.jdcrcamerabase.JdcrCameraHelper
 import com.jdcr.jdcrcamerabase.JdcrCustomPreviewView
 import com.jdcr.jdcrcamerabase.config.JdcrCameraPreviewConfig
 import com.jdcr.jdcrcamerabase.config.JdcrCameraStartConfig
+import com.jdcr.jdcrcamerabase.util.JdcrCameraLog
 import com.jdcr.jdcrcameracommon.ui.theme.JdcrCameraCommonTheme
 import com.jdcr.jdcrcameragesture.JdcrGestureRecognizerHelper
+import com.jdcr.jdcrlog.JdcrLog
 import com.jdcr.jdcrqrcode.JdcrQRCodeHelper
 import kotlinx.coroutines.delay
 
@@ -32,6 +34,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        JdcrLog.enable(true)
+        JdcrCameraLog.prefix = "ajdcr_"
         setContent {
             JdcrCameraCommonTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
