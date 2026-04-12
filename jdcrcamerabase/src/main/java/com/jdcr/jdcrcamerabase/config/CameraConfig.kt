@@ -25,7 +25,7 @@ data class JdcrCameraStartConfig(
         val Test = JdcrCameraStartConfig(
             lensFacingBack = false,
             captureConfig = CameraCaptureConfig(true),
-            analysisConfig = CameraAnalysisConfig(true)
+            analysisConfig = CameraAnalysisConfig(true, throttler = 2000)
         )
         val Capture = JdcrCameraStartConfig()
         val Analysis =

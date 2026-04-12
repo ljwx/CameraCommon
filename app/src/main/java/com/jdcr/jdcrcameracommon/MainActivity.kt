@@ -53,18 +53,22 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     val previewView = remember { JdcrCustomPreviewView(context, JdcrCameraPreviewConfig.getTest()) }
 
     LaunchedEffect(Unit) {
-        return@LaunchedEffect
+//        return@LaunchedEffect
         delay(500)
         val modelAssetPath = "mediapipe/model/gesture_recognizer.task"
-        val recognizer = JdcrGestureRecognizerHelper(context, modelAssetPath)
+        val option = JdcrGestureRecognizerHelper.Builder()
+            .setModelAssetPath(modelAssetPath)
+            .build()
+        val recognizer = JdcrGestureRecognizerHelper(context, option)
         startCamera(previewView, context, lifecycleOwner).apply {
             getImageAnalysisBitmapFlow().collect {
-                recognizer.recognizeBitmap(it)
+                recognizer.recognizeAsyncBitmap(it)
             }
         }
     }
 
     LaunchedEffect(Unit) {
+        return@LaunchedEffect
         delay(500)
         startQRCode(previewView, context, lifecycleOwner)
     }

@@ -4,13 +4,9 @@ import android.util.Log
 import com.jdcr.jdcrcamerabase.util.JdcrCameraLog
 import com.jdcr.jdcrcamerabase.util.JdcrCameraLogBase
 
-object HandGestureLog: JdcrCameraLogBase() {
+object HandGestureLog : JdcrCameraLogBase("_camera_gesture") {
 
-    init {
-        feat = "_gesture"
-    }
-
-    var enableRunLog = false
+    var enableRunLog = true
 
     fun r(content: String) {
         if (enableRunLog) {

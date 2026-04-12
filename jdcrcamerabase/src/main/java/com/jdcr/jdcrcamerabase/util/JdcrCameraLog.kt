@@ -2,12 +2,9 @@ package com.jdcr.jdcrcamerabase.util
 
 import android.util.Log
 
-open class JdcrCameraLogBase {
+open class JdcrCameraLogBase(feat: String) {
 
-    var mTagPrefix = "jdcr"
-
-    var feat = "_camera"
-    protected val tag by lazy { mTagPrefix + feat }
+    protected val tag by lazy { JdcrCameraLog.mTagPrefix + feat }
 
     fun i(content: String) {
         Log.i(tag, content)
@@ -23,6 +20,8 @@ open class JdcrCameraLogBase {
 
 }
 
-object JdcrCameraLog : JdcrCameraLogBase() {
+object JdcrCameraLog : JdcrCameraLogBase("_camera") {
+
+    var mTagPrefix = "jdcr"
 
 }

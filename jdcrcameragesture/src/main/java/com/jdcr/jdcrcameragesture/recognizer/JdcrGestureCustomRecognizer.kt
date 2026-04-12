@@ -1,6 +1,9 @@
 package com.jdcr.jdcrcameragesture.recognizer
 
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+import com.jdcr.jdcrcameragesture.data.JdcrGestureName
+import com.jdcr.jdcrcameragesture.data.GestureName
+import com.jdcr.jdcrcameragesture.exception.JdcrUnrecognizedException
 import com.jdcr.jdcrcameragesture.util.HandGestureLog
 import kotlin.math.abs
 import kotlin.math.acos
@@ -12,22 +15,14 @@ import kotlin.math.sqrt
  * 2D 角度随旋转平缓退化，对阈值判定更稳定。
  * 拳头额外用 MCP-TIP 2D 距离兜底手背朝屏幕时 z 方向弯曲的情况。
  */
-object JdcrGestureCustomRecognizer {
+internal class JdcrGestureCustomRecognizer : CustomRecognizer {
 
-    //扩展
-    const val Ok = "ok"
-    const val SixSixSix = "sixSixSix"
-    const val FingerHeart = "fingerHeart" //比心
-    const val PointLeft = "pointLeft"
-    const val PointRight = "pointRight"
-    const val PointDown = "pointDown"
-
-    fun custom(h: List<NormalizedLandmark>): Result<String> {
+    override fun recognize(h: List<NormalizedLandmark>): Result<GestureName> {
         HandGestureLog.r("进入库自定义手势识别")
-        if (h.size < 21) return Result.failure(Exception("关节数不够21个"))
+        if (h.size < 21) return Result.failure(JdcrUnrecognizedException(506, "关节数不够21个"))
 
         val palmSize = distance2D(h[0], h[9])
-        if (palmSize < 1e-6f) return Result.success(JdcrGestureRecognizer.UNKONWN)
+        if (palmSize < 1e-6f) return Result.success(GestureName(JdcrGestureName.UNKNOWN))
 
         // 1. 基础角度计算（保持不变，确保其他手势稳定）
         val isThumbExt = jointAngle(h[2], h[3], h[4]) > 150f
@@ -56,18 +51,19 @@ object JdcrGestureCustomRecognizer {
         val thumbIndexTipDist = distance2D(h[4], h[8])
         val thumbIndexDipDist = distance2D(h[4], h[7])
         val isPinch = thumbIndexTipDist < palmSize * 0.45f || thumbIndexDipDist < palmSize * 0.45f
-        val thumbNearIndexTip = thumbIndexTipDist < palmSize * 0.55f || thumbIndexDipDist < palmSize * 0.55f
+        val thumbNearIndexTip =
+            thumbIndexTipDist < palmSize * 0.55f || thumbIndexDipDist < palmSize * 0.55f
 
         // --- 手势识别开始（严格保持原有顺序） ---
 
         // 比心 🫰
         if (isPinch && isIndexSemiExt && middleCurled && !isRingExt && !isPinkyExt) {
-            return Result.success(FingerHeart)
+            return Result.success(GestureName(JdcrGestureName.CUSTOM_FingerHeart))
         }
 
         // OK 👌
         if (isPinch && isMiddleExt && isRingExt && isPinkyExt) {
-            return Result.success(Ok)
+            return Result.success(GestureName(JdcrGestureName.CUSTOM_Ok))
         }
 
         // 666 和 点赞 的排他性判断 (核心逻辑修改)
@@ -75,28 +71,29 @@ object JdcrGestureCustomRecognizer {
             if (isPinkyActive) {
                 // 情况一：只要小指是开的，它就绝对不可能是“点赞”
                 if (isHorizontal6) {
-                    return Result.success(SixSixSix) // 横向6，识别成功
+                    return Result.success(GestureName(JdcrGestureName.CUSTOM_SixSixSix)) // 横向6，识别成功
                 } else {
                     // 竖向6，这里直接返回 UNKONWN
                     // 因为我们在这个 block 里，已经排除了它是“点赞”的可能性
-                    return Result.success(JdcrGestureRecognizer.UNKONWN)
+                    return Result.success(GestureName(JdcrGestureName.UNKNOWN))
                 }
             } else {
                 // 情况二：小指是完全闭合的，这里才是真正的“点赞”判定区
                 // 如果你不想要点赞识别，就返回 UNKONWN；
                 // 这样竖着的6在上面就会被拦截，永远进不来这里。
-                return Result.success(JdcrGestureRecognizer.UNKONWN)
+                return Result.success(GestureName(JdcrGestureName.UNKNOWN))
             }
         }
 
         // 拳头 ✊
-        val anglesCurled = indexAngle < 130f && middleAngle < 130f && ringAngle < 130f && pinkyAngle < 130f
+        val anglesCurled =
+            indexAngle < 130f && middleAngle < 130f && ringAngle < 130f && pinkyAngle < 130f
         val tipsOverlapMcp = distance2D(h[5], h[8]) < palmSize * 0.35f
                 && distance2D(h[9], h[12]) < palmSize * 0.35f
                 && distance2D(h[13], h[16]) < palmSize * 0.35f
                 && distance2D(h[17], h[20]) < palmSize * 0.35f
         if (anglesCurled || tipsOverlapMcp) {
-            return Result.success("fist")
+            return Result.success(GestureName(JdcrGestureName.MODEL_ClosedFist))
         }
 
         // 指向 ☝️
@@ -104,15 +101,15 @@ object JdcrGestureCustomRecognizer {
             val dx = h[8].x() - h[0].x()
             val dy = h[8].y() - h[0].y()
             if (abs(dx) > abs(dy) * 1.2f) {
-                if (dx < 0) return Result.success(PointLeft)
-                if (dx > 0) return Result.success(PointRight)
+                if (dx < 0) return Result.success(GestureName(JdcrGestureName.CUSTOM_PointLeft))
+                if (dx > 0) return Result.success(GestureName(JdcrGestureName.CUSTOM_PointRight))
             } else if (abs(dy) > abs(dx) * 1.2f) {
-                if (dy > 0) return Result.success(PointDown)
-                if (dy < 0) return Result.success(JdcrGestureRecognizer.PointingUp)
+                if (dy > 0) return Result.success(GestureName(JdcrGestureName.CUSTOM_PointDown))
+                if (dy < 0) return Result.success(GestureName(JdcrGestureName.MODEL_PointingUp))
             }
         }
 
-        return Result.success(JdcrGestureRecognizer.UNKONWN)
+        return Result.success(GestureName(JdcrGestureName.UNKNOWN))
     }
 
     private fun distance2D(a: NormalizedLandmark, b: NormalizedLandmark): Float {
