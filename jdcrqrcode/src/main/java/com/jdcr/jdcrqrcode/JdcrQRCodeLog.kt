@@ -1,13 +1,10 @@
 package com.jdcr.jdcrqrcode
 
-import com.jdcr.jdcrlog.JdcrLogBase
+import com.jdcr.jdcrlog.JdcrLog
 
 object JdcrQRCodeLog {
 
-    var prefix = "jdcr_"
-    var feature = "qrcode"
-
-    private val logger by lazy { JdcrLogBase(prefix, feature) }
+    private val logger = JdcrLog
 
     fun v(msg: String) {
         logger.v(msg)

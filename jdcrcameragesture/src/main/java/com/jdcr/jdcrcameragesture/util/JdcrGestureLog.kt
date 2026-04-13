@@ -1,13 +1,10 @@
 package com.jdcr.jdcrcameragesture.util
 
-import com.jdcr.jdcrlog.JdcrLogBase
+import com.jdcr.jdcrlog.JdcrLog
 
 object JdcrGestureLog {
 
-    var prefix = "jdcr_"
-    var feature = "camera_gesture"
-
-    private val logger by lazy { JdcrLogBase(prefix, feature) }
+    private val logger = JdcrLog
 
     fun v(msg: String) {
         logger.v(msg)

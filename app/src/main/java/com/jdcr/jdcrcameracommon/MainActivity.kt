@@ -34,8 +34,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        JdcrLog.globalLogPrefix = "jdcr_"
+        JdcrLog.globalLogFeature = "camera"
         JdcrLog.enable(true)
-        JdcrCameraLog.prefix = "ajdcr_"
         setContent {
             JdcrCameraCommonTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
