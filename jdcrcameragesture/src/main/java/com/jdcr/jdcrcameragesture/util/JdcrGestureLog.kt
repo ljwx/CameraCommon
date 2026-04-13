@@ -5,7 +5,7 @@ import com.jdcr.jdcrlog.JdcrLogBase
 object JdcrGestureLog : JdcrLogBase(){
 
     init {
-        setDefaultTag("jdcr_", "camera_gesture")
+        setDefaultTag("jdcr", "camera", "gesture")
     }
 
 }

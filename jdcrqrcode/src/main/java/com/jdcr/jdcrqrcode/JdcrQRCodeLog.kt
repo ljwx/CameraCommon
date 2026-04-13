@@ -5,7 +5,7 @@ import com.jdcr.jdcrlog.JdcrLogBase
 object JdcrQRCodeLog:JdcrLogBase() {
 
     init {
-        setDefaultTag("jdcr_", "camera_qrcode")
+        setDefaultTag("jdcr", "camera", "qrcode")
     }
 
 }
