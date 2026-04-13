@@ -46,7 +46,7 @@ class JdcrGestureRecognizerHelper(
                 }
                 .setNumHands(options.maxHand)
                 .setErrorListener {
-                    JdcrGestureLog.e("异步识别异常:$it")
+                    JdcrGestureLog.e("异步识别异常", it)
                 }
         JdcrGestureLog.i("创建手势识别处理器")
         return GestureRecognizer.createFromOptions(context, optionBuilder.build())

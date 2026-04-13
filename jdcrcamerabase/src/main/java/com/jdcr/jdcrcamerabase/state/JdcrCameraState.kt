@@ -21,20 +21,28 @@ sealed class JdcrCameraState(val desc: String) {
 
 }
 
-sealed class JdcrCameraStateError {
-    data class StreamConfigError(val message: String = "流配置错误") : JdcrCameraStateError()
-    data class CameraInUse(val message: String = "相机已被占用") : JdcrCameraStateError()
-    data class MaxCamerasInUse(val message: String = "已达到最大相机使用量") :
-        JdcrCameraStateError()
+sealed class JdcrCameraStateError(open val message: String) {
+    data class StreamConfigError(override val message: String = "流配置错误") :
+        JdcrCameraStateError(message)
 
-    data class OtherRecoverableError(val message: String = "其他可恢复错误") :
-        JdcrCameraStateError()
+    data class CameraInUse(override val message: String = "相机已被占用") :
+        JdcrCameraStateError(message)
 
-    data class CameraDisabled(val message: String = "相机被禁用") : JdcrCameraStateError()
-    data class CameraFatalError(val message: String = "相机致命错误") : JdcrCameraStateError()
-    data class DoNotDisturbModeEnabled(val message: String = "请勿打扰模式已启用") :
-        JdcrCameraStateError()
+    data class MaxCamerasInUse(override val message: String = "已达到最大相机使用量") :
+        JdcrCameraStateError(message)
 
-    data class Unknown(val message: String = "未知错误") :
-        JdcrCameraStateError()
+    data class OtherRecoverableError(override val message: String = "其他可恢复错误") :
+        JdcrCameraStateError(message)
+
+    data class CameraDisabled(override val message: String = "相机被禁用") :
+        JdcrCameraStateError(message)
+
+    data class CameraFatalError(override val message: String = "相机致命错误") :
+        JdcrCameraStateError(message)
+
+    data class DoNotDisturbModeEnabled(override val message: String = "请勿打扰模式已启用") :
+        JdcrCameraStateError(message)
+
+    data class Unknown(override val message: String = "未知错误") :
+        JdcrCameraStateError(message)
 }

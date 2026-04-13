@@ -28,10 +28,10 @@ class JdcrQRCodeHelper {
                 JdcrQRCodeLog.i("二维码识别结果:$result")
                 Result.success(result)
             } catch (e: NotFoundException) {
-                JdcrQRCodeLog.e("未发现二维码:$e")
+                JdcrQRCodeLog.w("未发现二维码")
                 Result.failure(e)
             } catch (e: Exception) {
-                JdcrQRCodeLog.e("扫描发生错误:$e")
+                JdcrQRCodeLog.e("扫描发生错误", e)
                 Result.failure(e)
             }
         }

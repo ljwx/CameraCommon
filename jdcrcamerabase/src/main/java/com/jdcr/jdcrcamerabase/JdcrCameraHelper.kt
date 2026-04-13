@@ -59,7 +59,7 @@ class JdcrCameraHelper(
 
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, e ->
         e.printStackTrace()
-        JdcrCameraLog.e("CameraHelper协程收到异常：${e}")
+        JdcrCameraLog.e("JdcrCameraHelper协程收到异常", e)
     }
     private val rootJob = SupervisorJob()
     private var _scope: CoroutineScope =
@@ -115,11 +115,11 @@ class JdcrCameraHelper(
                         conti.resume(Result.success(cameraProvider!!), null)
                     }, ContextCompat.getMainExecutor(context))
                     conti.invokeOnCancellation {
-                        JdcrCameraLog.e("相机初始化被取消:$it")
+                        JdcrCameraLog.e("相机初始化被取消", it)
                         future.cancel(true)
                     }
                 }.onFailure {
-                    JdcrCameraLog.e("相机初始化异常:$it")
+                    JdcrCameraLog.e("相机初始化异常", it)
                     conti.resume(Result.failure(it), null)
                 }
             }
@@ -282,7 +282,7 @@ class JdcrCameraHelper(
                         CameraState.ERROR_DO_NOT_DISTURB_MODE_ENABLED -> JdcrCameraStateError.DoNotDisturbModeEnabled()
                         else -> JdcrCameraStateError.Unknown()
                     }
-                    JdcrCameraLog.e("收到camera状态错误:$stateError")
+                    JdcrCameraLog.e("收到camera状态错误", IllegalStateException(stateError.message))
                     updateState(JdcrCameraState.Error(stateError))
                 }
             }
@@ -305,8 +305,8 @@ class JdcrCameraHelper(
             JdcrCameraLog.i("启动相机,执行完成")
             true
         }.onFailure {
-            val message = "启动相机,执行失败:$it"
-            JdcrCameraLog.e(message)
+            val message = "启动相机,执行失败"
+            JdcrCameraLog.e(message, it)
             updateState(JdcrCameraState.Error(JdcrCameraStateError.Unknown(message)))
         }
     }
@@ -385,7 +385,7 @@ class JdcrCameraHelper(
 
             override fun onError(exception: ImageCaptureException) {
                 super.onError(exception)
-                JdcrCameraLog.e("拍照失败:$exception")
+                JdcrCameraLog.e("拍照失败", exception)
                 result(Result.failure(exception))
             }
 
@@ -408,7 +408,7 @@ class JdcrCameraHelper(
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    JdcrCameraLog.e("拍照失败:$exception")
+                    JdcrCameraLog.e("拍照失败", exception)
                     callback.invoke(Result.failure(exception))
                 }
 
