@@ -5,7 +5,7 @@ import com.jdcr.jdcrlog.JdcrLogBase
 object JdcrCameraLog : JdcrLogBase() {
 
     init {
-        setDefaultTag("jdcr", "camera")
+        setDefaultTag("camera")
     }
 
 }
