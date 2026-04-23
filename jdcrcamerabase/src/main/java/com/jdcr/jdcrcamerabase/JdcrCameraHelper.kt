@@ -75,6 +75,7 @@ class JdcrCameraHelper(
 
     @Volatile
     private var currentLensFacingBack = true
+    private var boundUseCases: List<UseCase> = emptyList()
     private var currentUseCases: List<UseCase> = emptyList()
 
     @Volatile
@@ -253,10 +254,6 @@ class JdcrCameraHelper(
                         }
 
                         CameraState.Type.OPEN -> {
-                            if (lastOperation is JdcrCameraOperation.Close) {
-                                JdcrCameraLog.d("相机已开启,但最后的操作是关闭相机,现在执行关闭")
-                                internalClose()
-                            }
                             JdcrCameraState.Opened
                         }
 
@@ -270,6 +267,12 @@ class JdcrCameraHelper(
                     }
                     JdcrCameraLog.d("收到camera状态变化:$stateType")
                     updateState(stateType)
+//                    if (state is JdcrCameraState.Opened) {
+//                        if (lastOperation is JdcrCameraOperation.Close) {
+//                            JdcrCameraLog.d("相机已开启,但最后的操作是关闭相机,现在执行关闭")
+//                            internalClose()
+//                        }
+//                    }
                 }
                 state.error?.apply {
                     val stateError = when (this.code) {
@@ -292,7 +295,7 @@ class JdcrCameraHelper(
             cameraProvider!!.apply {
                 JdcrCameraLog.i("移除camera状态监听")
                 camera?.cameraInfo?.cameraState?.removeObservers(lifecycleOwner)
-                unbindAll()
+                unbind(*boundUseCases.toTypedArray())
                 camera =
                     bindToLifecycle(
                         lifecycleOwner,
@@ -301,6 +304,7 @@ class JdcrCameraHelper(
                     ).apply {
                         observeState(this.cameraInfo)
                     }
+                boundUseCases = list
             }
             JdcrCameraLog.i("启动相机,执行完成")
             true
@@ -420,7 +424,7 @@ class JdcrCameraHelper(
     }
 
     private fun closedSuccess(): Boolean {
-        return lastOperation is JdcrCameraOperation.Close && (stateFlow.value is JdcrCameraState.Closed || stateFlow.value == JdcrCameraState.IDLE)
+        return isClosed()
     }
 
     fun isOpened(): Boolean {
@@ -428,7 +432,7 @@ class JdcrCameraHelper(
     }
 
     fun isClosed(): Boolean {
-        return lastOperation is JdcrCameraOperation.Close && (stateFlow.value is JdcrCameraState.Closed || stateFlow.value == JdcrCameraState.IDLE)
+        return lastOperation is JdcrCameraOperation.Close && (stateFlow.value is JdcrCameraState.Closed || stateFlow.value == JdcrCameraState.IDLE) && (camera == null && boundUseCases.isEmpty())
     }
 
     suspend fun switchAndWait(facingBack: Boolean? = null): Result<Boolean> {
@@ -500,8 +504,13 @@ class JdcrCameraHelper(
         }
         return runMain {
             JdcrCameraLog.d("执行关闭相机(解绑)")
-            cameraProvider?.unbindAll()
+            camera?.cameraInfo?.cameraState?.removeObservers(lifecycleOwner)
+            if (boundUseCases.isNotEmpty()) {
+                cameraProvider?.unbind(*boundUseCases.toTypedArray())
+                boundUseCases = emptyList()
+            }
             camera = null
+            updateState(JdcrCameraState.Closed)
             Result.success(true)
         }
     }
