@@ -46,6 +46,7 @@ class JdcrCustomPreviewView(
     init {
         id = R.id.jdcrcamerabase_custom_preview_container
         addPreviewView()
+        isClickable = true
     }
 
     override fun dispatchDraw(canvas: Canvas) {
@@ -163,8 +164,8 @@ class JdcrCustomPreviewView(
         }
     }
 
-    private fun getUpperInnerBorderPaint(stroke: JdcrPreviewUpperMaskInnerStroke?):Paint {
-        stroke?:return Paint().apply { color = Color.TRANSPARENT }
+    private fun getUpperInnerBorderPaint(stroke: JdcrPreviewUpperMaskInnerStroke?): Paint {
+        stroke ?: return Paint().apply { color = Color.TRANSPARENT }
         return Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = stroke.strokeWidth.dp2Px(context)

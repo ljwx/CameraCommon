@@ -40,6 +40,17 @@ data class JdcrCameraPreviewConfig(
             )
         }
 
+        fun getQrCode(): JdcrCameraPreviewConfig {
+            return JdcrCameraPreviewConfig(
+                150f,
+                170f,
+                30f,
+                30f,
+                outerBorder = JdcrPreviewOuterBorder(),
+                upperMask = JdcrPreviewUpperMask()
+            )
+        }
+
     }
 
 }
