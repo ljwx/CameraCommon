@@ -9,7 +9,7 @@ data class CameraPreviewConfig(
 
 data class CameraAnalysisConfig(
     val enable: Boolean = false,
-    val throttler: Long = 100,
+    val throttler: Long = 90,
     val targetAspectRatio: Float? = null
 )
 
