@@ -3,23 +3,23 @@ package com.jdcr.jdcrcamerabase.config
 import androidx.camera.view.PreviewView.ScaleType
 
 data class CameraPreviewConfig(
-    val enable: Boolean = true,
-    val scaleType: ScaleType = ScaleType.FILL_CENTER
+    var enable: Boolean = true,
+    var scaleType: ScaleType = ScaleType.FILL_CENTER
 )
 
 data class CameraAnalysisConfig(
-    val enable: Boolean = false,
-    val throttler: Long = 90,
-    val targetAspectRatio: Float? = null
+    var enable: Boolean = false,
+    var throttler: Long = 90,
+    var targetAspectRatio: Float? = null
 )
 
 data class CameraCaptureConfig(val enable: Boolean = true)
 
 data class JdcrCameraStartConfig(
-    val lensFacingBack: Boolean = true,
-    val previewConfig: CameraPreviewConfig = CameraPreviewConfig(),
-    val captureConfig: CameraCaptureConfig = CameraCaptureConfig(),
-    val analysisConfig: CameraAnalysisConfig = CameraAnalysisConfig(),
+    var lensFacingBack: Boolean = true,
+    var previewConfig: CameraPreviewConfig = CameraPreviewConfig(),
+    var captureConfig: CameraCaptureConfig = CameraCaptureConfig(),
+    var analysisConfig: CameraAnalysisConfig = CameraAnalysisConfig(),
 ) {
     companion object {
         val Test = JdcrCameraStartConfig(
