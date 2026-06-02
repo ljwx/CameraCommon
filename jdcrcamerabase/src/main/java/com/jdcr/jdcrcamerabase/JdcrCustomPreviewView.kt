@@ -186,8 +186,9 @@ class JdcrCustomPreviewView(
         layoutParams = layout
         val previewView = PreviewView(context).apply {
             id = R.id.jdcrcamerabase_preview_view
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            implementationMode = option.previewConfig.implementationMode
         }
+        JdcrCameraLog.i("预览模式: ${previewView.implementationMode}")
         addView(previewView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 

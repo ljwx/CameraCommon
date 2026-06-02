@@ -1,6 +1,7 @@
 package com.jdcr.jdcrcamerabase.config
 
 import android.graphics.Color
+import androidx.camera.view.PreviewView
 
 data class JdcrPreviewOuterBorder(val color: Int = Color.WHITE, val width: Float = 3f)
 
@@ -17,6 +18,8 @@ data class JdcrPreviewUpperMask(
     val innerStroke: JdcrPreviewUpperMaskInnerStroke? = JdcrPreviewUpperMaskInnerStroke()
 )
 
+data class JdcrPreviewConfig(var implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.COMPATIBLE)
+
 data class JdcrCameraPreviewConfig(
     val w: Float,
     val h: Float,
@@ -26,6 +29,7 @@ data class JdcrCameraPreviewConfig(
     val outerRadiusBottom: Float = 12f,// 底部弧度
     val outerBorder: JdcrPreviewOuterBorder? = null,//外边框
     val upperMask: JdcrPreviewUpperMask? = null,// 是否显示遮罩
+    val previewConfig: JdcrPreviewConfig = JdcrPreviewConfig(),
 ) {
 
     companion object {
