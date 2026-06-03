@@ -196,4 +196,27 @@ class JdcrCustomPreviewView(
         return findViewById(R.id.jdcrcamerabase_preview_view)
     }
 
+    fun capturePreviewBitmap(): android.graphics.Bitmap? {
+        val previewView = getPreviewView()
+
+        // 1. 获取 CameraX 渲染的当前帧图片
+        val cameraBitmap = previewView.bitmap ?: return null
+
+        // 2. 拷贝为可修改的 ARGB_8888 格式（支持透明叠加）
+        val resultBitmap = cameraBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(resultBitmap)
+
+        // 3. 暂时隐藏 PreviewView，避免它在自身的 draw 流程中绘制黑色占位图覆盖已获取的相机画面
+        val originalVisibility = previewView.visibility
+        previewView.visibility = INVISIBLE
+
+        // 4. 将 JdcrCustomPreviewView 上的圆角、边框、半透明遮罩等绘制叠加在相机画面之上
+        draw(canvas)
+
+        // 5. 恢复 PreviewView 的可见性
+        previewView.visibility = originalVisibility
+
+        return resultBitmap
+    }
+
 }
