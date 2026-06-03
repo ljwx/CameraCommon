@@ -11,6 +11,7 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.util.TypedValue
 import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.camera.view.PreviewView
 import kotlin.math.max
 import androidx.core.graphics.toColorInt
@@ -42,6 +43,8 @@ class JdcrCustomPreviewView(
     private val context: Context,
     private val option: JdcrCameraPreviewConfig,
 ) : FrameLayout(context) {
+
+    private var captureView: ImageView? = null
 
     init {
         id = R.id.jdcrcamerabase_custom_preview_container
@@ -217,6 +220,33 @@ class JdcrCustomPreviewView(
         previewView.visibility = originalVisibility
 
         return resultBitmap
+    }
+
+    fun startCapture() {
+        endCapture()
+        post {
+            val bitmap = capturePreviewBitmap()
+            if (bitmap != null) {
+                captureView = ImageView(context).apply {
+                    setImageBitmap(bitmap)
+                    layoutParams = LayoutParams(
+                        LayoutParams.MATCH_PARENT,
+                        LayoutParams.MATCH_PARENT
+                    )
+                }
+                addView(captureView)
+            }
+        }
+    }
+
+    fun endCapture() {
+        post {
+            captureView?.let {
+                it.setImageDrawable(null)
+                removeView(it)
+                captureView = null
+            }
+        }
     }
 
 }
