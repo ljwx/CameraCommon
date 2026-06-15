@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        JdcrCameraLog.enable(true, cacheDir.absolutePath+ "/log.txt")
+        JdcrCameraLog.enable(true)
         setContent {
             JdcrCameraCommonTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -93,6 +93,13 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
             }
         }) {
             Text("开启")
+        }
+        Button(onClick = {
+            scope.launch {
+                previewView.startCapture()
+            }
+        }) {
+            Text("截图")
         }
         Button(onClick = {
             scope.launch {
