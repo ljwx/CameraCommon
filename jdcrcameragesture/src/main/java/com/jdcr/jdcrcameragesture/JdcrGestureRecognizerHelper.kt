@@ -33,6 +33,7 @@ class JdcrGestureRecognizerHelper(
     )
 
     private val recognizer by lazy { JdcrGestureRecognizer(options) }
+    private var lastInputTimestampMs = -1L
 
     private fun initGestureRecognizer(): GestureRecognizer {
         fun createFromOptions(baseOptions: BaseOptions): GestureRecognizer {
@@ -76,9 +77,16 @@ class JdcrGestureRecognizerHelper(
         }
     }
 
+    @Synchronized
+    private fun nextInputTimestampMs(): Long {
+        val timestampMs = maxOf(SystemClock.uptimeMillis(), lastInputTimestampMs + 1)
+        lastInputTimestampMs = timestampMs
+        return timestampMs
+    }
+
     private fun recognizeLiveStream(bitmap: Bitmap) {
         val mpImage = BitmapImageBuilder(bitmap).build()
-        gestureRecognizer.recognizeAsync(mpImage, SystemClock.uptimeMillis())
+        gestureRecognizer.recognizeAsync(mpImage, nextInputTimestampMs())
     }
 
     override fun recognizeAsyncBitmap(bitmap: Bitmap) {
