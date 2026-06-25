@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.net.Uri
+import android.os.Build
 import android.os.Looper
 import android.view.Surface
 import android.view.ViewGroup
@@ -144,12 +145,41 @@ class JdcrCameraHelper(
     private fun getPreview(): Preview {
         val previewView = getPreviewView()
         previewView.scaleType = config.previewConfig.scaleType
+        val rotation = resolveDisplayRotation(previewView)
+        JdcrCameraLog.d(
+            "创建Preview,display.rotation=" + rotationName(rotation) +
+                ",viewAttached=" + previewView.isAttachedToWindow +
+                ",implMode=" + previewView.implementationMode
+        )
         preview = preview ?: Preview.Builder()
-            .setTargetRotation(previewView.display.rotation) // 关键：自动适配方向
+            .setTargetRotation(rotation) // 关键：自动适配方向
             .build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
         return preview!!
+    }
+
+    /**
+     * display 在 view 尚未 attach 时可能为空(尤其浮窗预览),回退到 ROTATION_0 并记录,避免 NPE 与拿到错误基准。
+     */
+    private fun resolveDisplayRotation(previewView: PreviewView): Int {
+        return previewView.display?.rotation ?: run {
+            JdcrCameraLog.e(
+                "预览视图display为空(可能尚未attach),方向基准回退ROTATION_0",
+                IllegalStateException("previewView.display == null")
+            )
+            Surface.ROTATION_0
+        }
+    }
+
+    private fun rotationName(rotation: Int): String {
+        return when (rotation) {
+            Surface.ROTATION_0 -> "ROTATION_0(0°)"
+            Surface.ROTATION_90 -> "ROTATION_90(90°)"
+            Surface.ROTATION_180 -> "ROTATION_180(180°)"
+            Surface.ROTATION_270 -> "ROTATION_270(270°)"
+            else -> "UNKNOWN($rotation)"
+        }
     }
 
     private fun getCameraSelector(): CameraSelector {
@@ -202,12 +232,23 @@ class JdcrCameraHelper(
 
         val ratio =
             getAspectRatio().apply { JdcrCameraLog.d("ImageAnalysis的Bitmap的宽高比:$this") }
+        var lastLoggedRotation = Int.MIN_VALUE
         imageAnalysis = imageAnalysis ?: ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .build().apply {
                 JdcrCameraLog.i("ImageAnalysis的图片采样间隔ms:$throttler")
                 setAnalyzer(cameraExecutor) {
+                    val rotationDegrees = it.imageInfo.rotationDegrees
+                    if (rotationDegrees != lastLoggedRotation) {
+                        lastLoggedRotation = rotationDegrees
+                        JdcrCameraLog.d(
+                            "分析帧方向诊断:imageInfo.rotationDegrees=" + rotationDegrees +
+                                ",image尺寸=" + it.width + "x" + it.height +
+                                ",uiRotation=" + uiRotationDegrees.value + "°" +
+                                ",后置=" + currentLensFacingBack
+                        )
+                    }
                     if (isThrottlePass()) {
                         var bitmap = it.toJdcrBitmap(ratio, !currentLensFacingBack)
                         bitmap = applyUiRotation(bitmap)
@@ -305,6 +346,7 @@ class JdcrCameraHelper(
                         observeState(this.cameraInfo)
                     }
                 boundUseCases = list
+                logBindDiagnostics(camera)
             }
             JdcrCameraLog.i("启动相机,执行完成")
             true
@@ -462,14 +504,92 @@ class JdcrCameraHelper(
             previewView.rotation = viewRotation.value
             JdcrCameraLog.d("更新预览视图角度:" + viewRotation.value)
             JdcrCameraUtils.relayoutPreviewView(previewView, viewRotation)
+            updateUseCaseRotation()
         }
     }
 
-    private fun updateUseCaseRotation(viewRotation: Float) {
-//        val surfaceRotation = CameraOrientationUtil.degreesToSurfaceRotation(viewRotation)
-//        preview?.targetRotation = surfaceRotation
-//        capture?.targetRotation = surfaceRotation
-//        imageAnalysis?.targetRotation = surfaceRotation
+    /**
+     * 将 UseCase 的 targetRotation 重新对齐到当前物理 display 方向。
+     * 注意:这里**故意不同步 ImageAnalysis**。分析帧的方向已在
+     * [com.jdcr.jdcrcamerabase.util.toJdcrBitmap] 内用 imageInfo.rotationDegrees 旋转过一次,
+     * 之后 applyUiRotation 又旋转一次;若再设置 imageAnalysis.targetRotation 会改变 rotationDegrees,
+     * 造成识别帧二次/反向旋转。预览(PreviewView)的可视方向由其自身按 display 校正,
+     * 这里同步 targetRotation 主要保证输出 buffer 元数据与显示一致,属安全加固。
+     */
+    private fun updateUseCaseRotation() {
+        val rotation = resolveDisplayRotation(getPreviewView())
+        preview?.targetRotation = rotation
+        capture?.targetRotation = rotation
+        JdcrCameraLog.d("同步UseCase的targetRotation=" + rotationName(rotation) + "(仅Preview/Capture,跳过ImageAnalysis)")
+    }
+
+    private fun logBindDiagnostics(camera: Camera?) {
+        runCatching {
+            val previewView = getPreviewView()
+            val sensorRotation = camera?.cameraInfo?.sensorRotationDegrees
+
+            // 多来源方向对比:定位是哪一层错位(view 所在 display / Activity 的 display / 配置方向)
+            val viewDisplayRotation = previewView.display?.rotation
+            val activityDisplayRotation =
+                (context as? android.app.Activity)?.windowManager?.defaultDisplay?.rotation
+            val viewContextDisplayRotation =
+                (previewView.context as? android.app.Activity)?.windowManager?.defaultDisplay?.rotation
+            val orientation = context.resources.configuration.orientation
+            val orientationName = when (orientation) {
+                android.content.res.Configuration.ORIENTATION_PORTRAIT -> "竖屏"
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE -> "横屏"
+                else -> "未知($orientation)"
+            }
+
+            JdcrCameraLog.i(
+                "相机绑定方向诊断:设备=" + Build.MANUFACTURER + "/" + Build.MODEL +
+                    ",sensorRotationDegrees=" + sensorRotation +
+                    ",view.display.rotation=" + (viewDisplayRotation?.let { rotationName(it) } ?: "null") +
+                    ",activity.display.rotation=" + (activityDisplayRotation?.let { rotationName(it) } ?: "null") +
+                    ",viewCtx.display.rotation=" + (viewContextDisplayRotation?.let { rotationName(it) } ?: "null") +
+                    ",configuration=" + orientationName +
+                    ",后置=" + currentLensFacingBack +
+                    ",绑定用例数=" + boundUseCases.size
+            )
+            logViewHierarchyTransforms(previewView)
+        }.onFailure {
+            JdcrCameraLog.e("打印相机绑定方向诊断失败", it)
+        }
+    }
+
+    /**
+     * 从 previewView 向上逐级检查父 View 是否带 rotation/scale 变换。
+     * COMPATIBLE(TextureView)预览会继承祖先 View 的变换,宿主容器若被旋转会导致预览整体歪。
+     */
+    private fun logViewHierarchyTransforms(start: android.view.View) {
+        runCatching {
+            val sb = StringBuilder("预览视图祖先transform诊断(从预览往上):")
+            var v: android.view.View? = start
+            var depth = 0
+            var foundTransform = false
+            while (v != null && depth < 15) {
+                val hasTransform = v.rotation != 0f || v.rotationX != 0f || v.rotationY != 0f ||
+                    v.scaleX != 1f || v.scaleY != 1f
+                if (hasTransform) foundTransform = true
+                if (hasTransform || depth == 0) {
+                    sb.append("\n  [").append(depth).append("] ")
+                        .append(v.javaClass.simpleName)
+                        .append(" size=").append(v.width).append("x").append(v.height)
+                        .append(" rotation=").append(v.rotation)
+                        .append(" rotationX=").append(v.rotationX)
+                        .append(" rotationY=").append(v.rotationY)
+                        .append(" scaleX=").append(v.scaleX)
+                        .append(" scaleY=").append(v.scaleY)
+                        .append(if (hasTransform) "  <== 有变换!" else "")
+                }
+                v = v.parent as? android.view.View
+                depth++
+            }
+            if (!foundTransform) sb.append("\n  (祖先链未发现 rotation/scale 变换)")
+            JdcrCameraLog.i(sb.toString())
+        }.onFailure {
+            JdcrCameraLog.e("打印预览视图祖先transform失败", it)
+        }
     }
 
     private fun clearPreviewViewState() {
