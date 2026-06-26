@@ -7,7 +7,9 @@ import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
+import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.PreviewView
@@ -148,20 +150,35 @@ object JdcrCameraUtils {
         ).setMetadata(metadata).build()
     }
 
+    /**
+     * 旋转预览视图后重新布局,使其在容器内铺满。
+     *
+     * 90/270 时**不再用正方形过扫**(老实现 maxDimen×maxDimen 会让预览的可视裁剪
+     * 变成 1:1 中心裁,与分析帧的容器比例裁剪不一致,导致手势坐标到不了边)。
+     * 改为「交换容器宽高 + 居中」:旋转 90° 后视图外接框恰好等于容器,既铺满又不引入
+     * 额外裁剪,从而保证 **预览可视区 == 分析帧裁剪区**(分析帧侧同步用交换比例裁剪)。
+     *
+     * 注意:必须 [Gravity.CENTER],否则非 MATCH_PARENT 的子 View 默认贴左上,绕自身中心
+     * 旋转后无法对齐容器中心。容器宽高未就绪(为 0)时回退 MATCH_PARENT,避免出现 0 尺寸。
+     */
     fun relayoutPreviewView(previewView: PreviewView, viewRotation: JdcrCameraUIRotation) {
         val parent = (previewView.parent as? ViewGroup) ?: return
         val parentWidth = parent.width
-        val parentHeight = parent.width
+        val parentHeight = parent.height
         val isSwap =
             (viewRotation == JdcrCameraUIRotation.DEGREES_90 || viewRotation == JdcrCameraUIRotation.DEGREES_270)
-        val maxDimen = maxOf(parent.width, parent.height)
-        if (isSwap) {
-            previewView.layoutParams.width = maxDimen
-            previewView.layoutParams.height = maxDimen
+        val lp = previewView.layoutParams
+        if (isSwap && parentWidth > 0 && parentHeight > 0) {
+            lp.width = parentHeight
+            lp.height = parentWidth
         } else {
-            previewView.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-            previewView.layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+            lp.height = ViewGroup.LayoutParams.MATCH_PARENT
         }
+        if (lp is FrameLayout.LayoutParams) {
+            lp.gravity = Gravity.CENTER
+        }
+        previewView.layoutParams = lp
         previewView.invalidate()
         previewView.requestLayout()
     }

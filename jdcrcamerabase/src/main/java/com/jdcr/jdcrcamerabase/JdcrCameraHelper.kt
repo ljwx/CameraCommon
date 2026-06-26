@@ -206,13 +206,23 @@ class JdcrCameraHelper(
             return false
         }
 
-        fun getAspectRatio(): Float? {
-            if (config.previewConfig.enable) {
-                if (displayView.width > 0 && displayView.height > 0) {
-                    return displayView.width.toFloat() / displayView.height.toFloat()
-                }
+        // 基础宽高比在创建时(主线程)取一次,与旧实现完全一致,避免在分析线程读 View 尺寸。
+        val previewBaseRatio: Float? =
+            if (config.previewConfig.enable && displayView.width > 0 && displayView.height > 0) {
+                displayView.width.toFloat() / displayView.height.toFloat()
+            } else {
+                null
             }
-            return config.analysisConfig.targetAspectRatio
+        // 仅 FILL_CENTER(中心裁剪铺满)下,“分析裁剪=预览可视区”的交换推导才成立;同样创建时取一次。
+        val centerCrop = config.previewConfig.scaleType == PreviewView.ScaleType.FILL_CENTER
+
+        // 每帧调用:非旋转时返回值与旧实现逐字节一致;仅当旋转 90/270 且中心裁剪时交换比例(1/base),
+        // 让识别裁剪跟随预览旋转后的可视区(见 relayoutPreviewView)。
+        fun resolveAnalysisRatio(): Float? {
+            val base = previewBaseRatio ?: return config.analysisConfig.targetAspectRatio
+            val swap = centerCrop && (uiRotationDegrees == JdcrCameraUIRotation.DEGREES_90 ||
+                uiRotationDegrees == JdcrCameraUIRotation.DEGREES_270)
+            return if (swap) 1f / base else base
         }
 
         fun applyUiRotation(bitmap: Bitmap): Bitmap {
@@ -230,9 +240,8 @@ class JdcrCameraHelper(
             return bitmap
         }
 
-        val ratio =
-            getAspectRatio().apply { JdcrCameraLog.d("ImageAnalysis的Bitmap的宽高比:$this") }
         var lastLoggedRotation = Int.MIN_VALUE
+        var lastLoggedRatio = Float.NaN
         imageAnalysis = imageAnalysis ?: ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
@@ -250,6 +259,15 @@ class JdcrCameraHelper(
                         )
                     }
                     if (isThrottlePass()) {
+                        // 每帧按当前 uiRotation 计算裁剪比例,确保旋转后识别裁剪跟随预览可视区。
+                        val ratio = resolveAnalysisRatio()
+                        val ratioValue = ratio ?: Float.NEGATIVE_INFINITY
+                        if (ratioValue != lastLoggedRatio) {
+                            lastLoggedRatio = ratioValue
+                            JdcrCameraLog.d(
+                                "ImageAnalysis的Bitmap的宽高比:$ratio,uiRotation=${uiRotationDegrees.value}°"
+                            )
+                        }
                         var bitmap = it.toJdcrBitmap(ratio, !currentLensFacingBack)
                         bitmap = applyUiRotation(bitmap)
                         analysisImageFlow.tryEmit(bitmap)
