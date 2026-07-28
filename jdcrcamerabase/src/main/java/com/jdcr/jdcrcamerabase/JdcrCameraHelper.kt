@@ -251,11 +251,12 @@ class JdcrCameraHelper(
                     val rotationDegrees = it.imageInfo.rotationDegrees
                     if (rotationDegrees != lastLoggedRotation) {
                         lastLoggedRotation = rotationDegrees
-                        JdcrCameraLog.d(
-                            "分析帧方向诊断:imageInfo.rotationDegrees=" + rotationDegrees +
-                                ",image尺寸=" + it.width + "x" + it.height +
-                                ",uiRotation=" + uiRotationDegrees.value + "°" +
-                                ",后置=" + currentLensFacingBack
+                        JdcrCameraLog.i(
+                            "分析帧基础方向:" +
+                                "raw=${it.width}x${it.height}" +
+                                ",rawCrop=${it.cropRect.toShortString()}" +
+                                ",imageRotation=${rotationDegrees}°" +
+                                ",${useCaseDirectionDescription()}"
                         )
                     }
                     if (isThrottlePass()) {
@@ -264,8 +265,10 @@ class JdcrCameraHelper(
                         val ratioValue = ratio ?: Float.NEGATIVE_INFINITY
                         if (ratioValue != lastLoggedRatio) {
                             lastLoggedRatio = ratioValue
-                            JdcrCameraLog.d(
-                                "ImageAnalysis的Bitmap的宽高比:$ratio,uiRotation=${uiRotationDegrees.value}°"
+                            JdcrCameraLog.i(
+                                "分析裁剪比例:$ratio," +
+                                    "uiRotation=${uiRotationDegrees.value}°," +
+                                    "previewBaseRatio=$previewBaseRatio,centerCrop=$centerCrop"
                             )
                         }
                         var bitmap = it.toJdcrBitmap(ratio, !currentLensFacingBack)
@@ -510,35 +513,65 @@ class JdcrCameraHelper(
         return stateFlow.mapNotNull { getOpenResult() }.first()
     }
 
+    fun changeRotationClockwise() {
+        val nextRotation = when (uiRotationDegrees) {
+            JdcrCameraUIRotation.DEGREES_0 -> JdcrCameraUIRotation.DEGREES_90
+            JdcrCameraUIRotation.DEGREES_90 -> JdcrCameraUIRotation.DEGREES_180
+            JdcrCameraUIRotation.DEGREES_180 -> JdcrCameraUIRotation.DEGREES_270
+            JdcrCameraUIRotation.DEGREES_270 -> JdcrCameraUIRotation.DEGREES_0
+        }
+        changeRotation(nextRotation)
+    }
+
     fun changeRotation(viewRotation: JdcrCameraUIRotation) {
-        JdcrCameraLog.d("触发旋转ui角度:" + viewRotation.value)
+        val oldRotation = uiRotationDegrees
+        JdcrCameraLog.i("触发手动旋转:old=${oldRotation.value}°,new=${viewRotation.value}°"
+        )
         if (viewRotation.value == uiRotationDegrees.value) {
-            JdcrCameraLog.d("不执行旋转,当前就是:" + uiRotationDegrees.value)
+            JdcrCameraLog.i("忽略重复旋转请求:当前=${uiRotationDegrees.value}°")
             return
         }
         uiRotationDegrees = viewRotation
         runMain {
             val previewView = getPreviewView()
             previewView.rotation = viewRotation.value
-            JdcrCameraLog.d("更新预览视图角度:" + viewRotation.value)
             JdcrCameraUtils.relayoutPreviewView(previewView, viewRotation)
             updateUseCaseRotation()
+            val parent = previewView.parent as? ViewGroup
+            JdcrCameraLog.i(
+                "手动旋转已应用:" +
+                    "old=${oldRotation.value}°,new=${viewRotation.value}°" +
+                    ",viewRotation=${previewView.rotation}°" +
+                    ",viewSize=${previewView.width}x${previewView.height}" +
+                    ",layoutSize=${previewView.layoutParams.width}x${previewView.layoutParams.height}" +
+                    ",parentSize=${parent?.width}x${parent?.height}" +
+                    ",${useCaseDirectionDescription()}"
+            )
         }
     }
 
     /**
      * 将 UseCase 的 targetRotation 重新对齐到当前物理 display 方向。
-     * 注意:这里**故意不同步 ImageAnalysis**。分析帧的方向已在
-     * [com.jdcr.jdcrcamerabase.util.toJdcrBitmap] 内用 imageInfo.rotationDegrees 旋转过一次,
-     * 之后 applyUiRotation 又旋转一次;若再设置 imageAnalysis.targetRotation 会改变 rotationDegrees,
-     * 造成识别帧二次/反向旋转。预览(PreviewView)的可视方向由其自身按 display 校正,
-     * 这里同步 targetRotation 主要保证输出 buffer 元数据与显示一致,属安全加固。
+     * 暂时保持既有行为,仅更新 Preview/Capture,不改 ImageAnalysis。
+     * 方向诊断日志会明确记录两者是否一致,待问题设备验证后再决定是否同步 Analysis。
      */
     private fun updateUseCaseRotation() {
         val rotation = resolveDisplayRotation(getPreviewView())
         preview?.targetRotation = rotation
         capture?.targetRotation = rotation
         JdcrCameraLog.d("同步UseCase的targetRotation=" + rotationName(rotation) + "(仅Preview/Capture,跳过ImageAnalysis)")
+    }
+
+    private fun useCaseDirectionDescription(): String {
+        val previewInfo = preview?.resolutionInfo
+        val analysisInfo = imageAnalysis?.resolutionInfo
+        return "preview(target=${preview?.targetRotation?.let(::rotationName)}," +
+            "resolution=${previewInfo?.resolution},crop=${previewInfo?.cropRect}," +
+            "rotation=${previewInfo?.rotationDegrees})," +
+            "analysis(target=${imageAnalysis?.targetRotation?.let(::rotationName)}," +
+            "resolution=${analysisInfo?.resolution},crop=${analysisInfo?.cropRect}," +
+            "rotation=${analysisInfo?.rotationDegrees})," +
+            "uiRotation=${uiRotationDegrees.value}°,后置=$currentLensFacingBack"
     }
 
     private fun logBindDiagnostics(camera: Camera?) {
@@ -558,17 +591,28 @@ class JdcrCameraHelper(
                 android.content.res.Configuration.ORIENTATION_LANDSCAPE -> "横屏"
                 else -> "未知($orientation)"
             }
+            val previewTarget = preview?.targetRotation
+            val analysisTarget = imageAnalysis?.targetRotation
 
             JdcrCameraLog.i(
-                "相机绑定方向诊断:设备=" + Build.MANUFACTURER + "/" + Build.MODEL +
+                "相机绑定:设备=" + Build.MANUFACTURER + "/" + Build.MODEL +
                     ",sensorRotationDegrees=" + sensorRotation +
                     ",view.display.rotation=" + (viewDisplayRotation?.let { rotationName(it) } ?: "null") +
                     ",activity.display.rotation=" + (activityDisplayRotation?.let { rotationName(it) } ?: "null") +
                     ",viewCtx.display.rotation=" + (viewContextDisplayRotation?.let { rotationName(it) } ?: "null") +
                     ",configuration=" + orientationName +
                     ",后置=" + currentLensFacingBack +
-                    ",绑定用例数=" + boundUseCases.size
+                    ",绑定用例数=" + boundUseCases.size +
+                    ",previewView=" + previewView.width + "x" + previewView.height +
+                    ",layout=" + previewView.layoutParams.width + "x" + previewView.layoutParams.height +
+                    ",${useCaseDirectionDescription()}"
             )
+            if (previewTarget != null && analysisTarget != null && previewTarget != analysisTarget) {
+                JdcrCameraLog.w(
+                    "[方向诊断]绑定后Preview与ImageAnalysis的targetRotation不一致:" +
+                        "preview=${rotationName(previewTarget)},analysis=${rotationName(analysisTarget)}"
+                )
+            }
             logViewHierarchyTransforms(previewView)
             // 渲染层的最终变换要等 surface 就绪+布局后才生效,多采样几次,一次跑够
             previewView.postDelayed({ logPreviewRenderTransform(previewView, "0.8s") }, 800)
