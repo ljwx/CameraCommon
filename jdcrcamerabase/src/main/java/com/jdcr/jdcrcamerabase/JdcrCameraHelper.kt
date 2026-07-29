@@ -256,7 +256,9 @@ class JdcrCameraHelper(
                                 "raw=${it.width}x${it.height}" +
                                 ",rawCrop=${it.cropRect.toShortString()}" +
                                 ",imageRotation=${rotationDegrees}°" +
-                                ",${useCaseDirectionDescription()}"
+                                ",analysisTarget=${imageAnalysis?.targetRotation?.let(::rotationName)}" +
+                                ",uiRotation=${uiRotationDegrees.value}°" +
+                                ",后置=$currentLensFacingBack"
                         )
                     }
                     if (isThrottlePass()) {
@@ -514,19 +516,20 @@ class JdcrCameraHelper(
     }
 
     fun changeRotationClockwise() {
-        val nextRotation = when (uiRotationDegrees) {
-            JdcrCameraUIRotation.DEGREES_0 -> JdcrCameraUIRotation.DEGREES_90
-            JdcrCameraUIRotation.DEGREES_90 -> JdcrCameraUIRotation.DEGREES_180
-            JdcrCameraUIRotation.DEGREES_180 -> JdcrCameraUIRotation.DEGREES_270
-            JdcrCameraUIRotation.DEGREES_270 -> JdcrCameraUIRotation.DEGREES_0
+        runMain {
+            val nextRotation = when (uiRotationDegrees) {
+                JdcrCameraUIRotation.DEGREES_0 -> JdcrCameraUIRotation.DEGREES_90
+                JdcrCameraUIRotation.DEGREES_90 -> JdcrCameraUIRotation.DEGREES_180
+                JdcrCameraUIRotation.DEGREES_180 -> JdcrCameraUIRotation.DEGREES_270
+                JdcrCameraUIRotation.DEGREES_270 -> JdcrCameraUIRotation.DEGREES_0
+            }
+            changeRotation(nextRotation)
         }
-        changeRotation(nextRotation)
     }
 
     fun changeRotation(viewRotation: JdcrCameraUIRotation) {
         val oldRotation = uiRotationDegrees
-        JdcrCameraLog.i("触发手动旋转:old=${oldRotation.value}°,new=${viewRotation.value}°"
-        )
+        JdcrCameraLog.i("触发手动旋转:old=${oldRotation.value}°,new=${viewRotation.value}°")
         if (viewRotation.value == uiRotationDegrees.value) {
             JdcrCameraLog.i("忽略重复旋转请求:当前=${uiRotationDegrees.value}°")
             return
