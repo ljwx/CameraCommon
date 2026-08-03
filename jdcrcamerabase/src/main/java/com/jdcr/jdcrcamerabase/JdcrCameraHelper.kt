@@ -21,6 +21,7 @@ import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnNextLayout
 import androidx.lifecycle.LifecycleOwner
 import com.jdcr.jdcrcamerabase.config.JdcrCameraStartConfig
 import com.jdcr.jdcrcamerabase.exception.JdcrCameraException
@@ -81,6 +82,9 @@ class JdcrCameraHelper(
 
     @Volatile
     private var uiRotationDegrees: JdcrCameraUIRotation = JdcrCameraUIRotation.DEGREES_0 //ui旋转角度
+
+    @Volatile
+    private var requestedUiRotationDegrees: JdcrCameraUIRotation = JdcrCameraUIRotation.DEGREES_0
 
     private val cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -218,17 +222,17 @@ class JdcrCameraHelper(
 
         // 每帧调用:非旋转时返回值与旧实现逐字节一致;仅当旋转 90/270 且中心裁剪时交换比例(1/base),
         // 让识别裁剪跟随预览旋转后的可视区(见 relayoutPreviewView)。
-        fun resolveAnalysisRatio(): Float? {
+        fun resolveAnalysisRatio(rotation: JdcrCameraUIRotation): Float? {
             val base = previewBaseRatio ?: return config.analysisConfig.targetAspectRatio
-            val swap = centerCrop && (uiRotationDegrees == JdcrCameraUIRotation.DEGREES_90 ||
-                uiRotationDegrees == JdcrCameraUIRotation.DEGREES_270)
+            val swap = centerCrop && (rotation == JdcrCameraUIRotation.DEGREES_90 ||
+                rotation == JdcrCameraUIRotation.DEGREES_270)
             return if (swap) 1f / base else base
         }
 
-        fun applyUiRotation(bitmap: Bitmap): Bitmap {
-            if (uiRotationDegrees != JdcrCameraUIRotation.DEGREES_0) {
+        fun applyUiRotation(bitmap: Bitmap, rotation: JdcrCameraUIRotation): Bitmap {
+            if (rotation != JdcrCameraUIRotation.DEGREES_0) {
                 val matrix = Matrix().apply {
-                    postRotate(uiRotationDegrees.value, bitmap.width / 2f, bitmap.height / 2f)
+                    postRotate(rotation.value, bitmap.width / 2f, bitmap.height / 2f)
                 }
                 val rotated =
                     Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
@@ -262,20 +266,25 @@ class JdcrCameraHelper(
                         )
                     }
                     if (isThrottlePass()) {
+                        val frameUiRotation = uiRotationDegrees
                         // 每帧按当前 uiRotation 计算裁剪比例,确保旋转后识别裁剪跟随预览可视区。
-                        val ratio = resolveAnalysisRatio()
+                        val ratio = resolveAnalysisRatio(frameUiRotation)
                         val ratioValue = ratio ?: Float.NEGATIVE_INFINITY
                         if (ratioValue != lastLoggedRatio) {
                             lastLoggedRatio = ratioValue
                             JdcrCameraLog.i(
                                 "分析裁剪比例:$ratio," +
-                                    "uiRotation=${uiRotationDegrees.value}°," +
+                                    "uiRotation=${frameUiRotation.value}°," +
                                     "previewBaseRatio=$previewBaseRatio,centerCrop=$centerCrop"
                             )
                         }
                         var bitmap = it.toJdcrBitmap(ratio, !currentLensFacingBack)
-                        bitmap = applyUiRotation(bitmap)
-                        analysisImageFlow.tryEmit(bitmap)
+                        bitmap = applyUiRotation(bitmap, frameUiRotation)
+                        if (frameUiRotation == uiRotationDegrees) {
+                            analysisImageFlow.tryEmit(bitmap)
+                        } else {
+                            bitmap.recycle()
+                        }
                     }
                     it.close()
                 }
@@ -517,7 +526,7 @@ class JdcrCameraHelper(
 
     fun changeRotationClockwise() {
         runMain {
-            val nextRotation = when (uiRotationDegrees) {
+            val nextRotation = when (requestedUiRotationDegrees) {
                 JdcrCameraUIRotation.DEGREES_0 -> JdcrCameraUIRotation.DEGREES_90
                 JdcrCameraUIRotation.DEGREES_90 -> JdcrCameraUIRotation.DEGREES_180
                 JdcrCameraUIRotation.DEGREES_180 -> JdcrCameraUIRotation.DEGREES_270
@@ -528,28 +537,35 @@ class JdcrCameraHelper(
     }
 
     fun changeRotation(viewRotation: JdcrCameraUIRotation) {
-        val oldRotation = uiRotationDegrees
-        JdcrCameraLog.i("触发手动旋转:old=${oldRotation.value}°,new=${viewRotation.value}°")
-        if (viewRotation.value == uiRotationDegrees.value) {
-            JdcrCameraLog.i("忽略重复旋转请求:当前=${uiRotationDegrees.value}°")
-            return
-        }
-        uiRotationDegrees = viewRotation
         runMain {
+            val oldRotation = requestedUiRotationDegrees
+            JdcrCameraLog.i("触发手动旋转:old=${oldRotation.value}°,new=${viewRotation.value}°")
+            if (viewRotation == requestedUiRotationDegrees) {
+                JdcrCameraLog.i("忽略重复旋转请求:当前=${requestedUiRotationDegrees.value}°")
+                return@runMain
+            }
+            requestedUiRotationDegrees = viewRotation
             val previewView = getPreviewView()
-            previewView.rotation = viewRotation.value
+            val parent = previewView.parent as? ViewGroup
+
+            // 先完成目标宽高布局,再提交角度。否则会短暂出现“旧尺寸 + 新角度”的黑边。
+            previewView.doOnNextLayout {
+                if (requestedUiRotationDegrees != viewRotation) return@doOnNextLayout
+                previewView.scaleType = config.previewConfig.scaleType
+                previewView.rotation = viewRotation.value
+                uiRotationDegrees = viewRotation
+                JdcrCameraLog.i(
+                    "手动旋转已应用:" +
+                        "old=${oldRotation.value}°,new=${viewRotation.value}°" +
+                        ",viewRotation=${previewView.rotation}°" +
+                        ",viewSize=${previewView.width}x${previewView.height}" +
+                        ",layoutSize=${previewView.layoutParams.width}x${previewView.layoutParams.height}" +
+                        ",parentSize=${parent?.width}x${parent?.height}" +
+                        ",${useCaseDirectionDescription()}"
+                )
+            }
             JdcrCameraUtils.relayoutPreviewView(previewView, viewRotation)
             updateUseCaseRotation()
-            val parent = previewView.parent as? ViewGroup
-            JdcrCameraLog.i(
-                "手动旋转已应用:" +
-                    "old=${oldRotation.value}°,new=${viewRotation.value}°" +
-                    ",viewRotation=${previewView.rotation}°" +
-                    ",viewSize=${previewView.width}x${previewView.height}" +
-                    ",layoutSize=${previewView.layoutParams.width}x${previewView.layoutParams.height}" +
-                    ",parentSize=${parent?.width}x${parent?.height}" +
-                    ",${useCaseDirectionDescription()}"
-            )
         }
     }
 
@@ -731,6 +747,7 @@ class JdcrCameraHelper(
             requestLayout()
         }
         uiRotationDegrees = JdcrCameraUIRotation.DEGREES_0
+        requestedUiRotationDegrees = JdcrCameraUIRotation.DEGREES_0
     }
 
     fun close(): Result<Boolean> {
@@ -770,7 +787,7 @@ class JdcrCameraHelper(
     }
 
     fun getUIRotationDegrees(): JdcrCameraUIRotation {
-        return uiRotationDegrees
+        return requestedUiRotationDegrees
     }
 
     private fun updateState(state: JdcrCameraState) {
